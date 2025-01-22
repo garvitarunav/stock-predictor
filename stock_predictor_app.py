@@ -6,138 +6,147 @@ from sklearn.preprocessing import MinMaxScaler
 from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
 from sklearn.compose import ColumnTransformer
-import joblib
-import numpy as np
 import streamlit as st
 
-# Function to fetch historical data for training
+# Predefined stock list for NSE and BSE
+def get_stock_list():
+    data = {
+        "Stock Symbol": [
+            "RELIANCE.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS", "ADANIPOWER.NS", 
+            "SBIN.BO", "ITC.NS", "ICICIIBANK.NS", "WIPRO.NS", "HCLTECH.NS",
+            "ONGC.NS", "TATASTEEL.NS", "BHARTIARTL.NS", "MARUTI.NS", "AXISBANK.NS",
+            "LT.NS", "BAJAJFINSV.NS", "HINDUNILVR.NS", "ULTRACEMCO.NS", "KOTAKBANK.NS"
+        ],
+        "Stock Name": [
+            "Reliance Industries", "Tata Consultancy Services", "Infosys", "HDFC Bank", "Adani Power", 
+            "State Bank of India", "ITC Limited", "ICICI Bank", "Wipro", "HCL Technologies",
+            "ONGC", "Tata Steel", "Bharti Airtel", "Maruti Suzuki", "Axis Bank",
+            "Larsen & Toubro", "Bajaj Finserv", "Hindustan Unilever", "UltraTech Cement", "Kotak Mahindra Bank"
+        ]
+    }
+    return pd.DataFrame(data)
+
+# Fetch historical data
 def fetch_historical_data(stock_symbol):
     stock_data = yf.Ticker(stock_symbol)
     df = stock_data.history(period="1y", interval="1d")
     df.index = pd.to_datetime(df.index)
-    df.index = df.index.tz_localize(None)  # Remove timezone info
+    df.index = df.index.tz_localize(None)
     return df
 
-# Function to add new technical features (e.g., moving averages)
+# Add technical indicators
 def add_technical_indicators(df):
-    df['5_day_MA'] = df['Close'].rolling(window=5).mean()  # 5-day moving average
-    df['10_day_MA'] = df['Close'].rolling(window=10).mean()  # 10-day moving average
-    df['20_day_MA'] = df['Close'].rolling(window=20).mean()  # 20-day moving average
+    df['5_day_MA'] = df['Close'].rolling(window=5).mean()
+    df['10_day_MA'] = df['Close'].rolling(window=10).mean()
+    df['20_day_MA'] = df['Close'].rolling(window=20).mean()
     df['RSI'] = 100 - (100 / (1 + (df['Close'].diff().gt(0).rolling(window=14).sum() /
                                    df['Close'].diff().lt(0).rolling(window=14).sum())))
-    df = df.dropna()  # Drop rows with NaN values due to moving averages or RSI
+    df = df.dropna()
     return df
 
-# Prepare data for training
+# Prepare data
 def prepare_data(df, target_feature):
     features = df[['Open', 'High', 'Low', 'Close', 'Volume', '5_day_MA', '10_day_MA', '20_day_MA', 'RSI']]
-    target = df[target_feature].shift(-1).dropna()  # Predict the next day's feature
-    features = features[:-1]  # Remove the last row to match target size
+    target = df[target_feature].shift(-1).dropna()
+    features = features[:-1]
     return features, target
 
-# Function to create the pipeline with configurable parameters
-def create_pipeline(n_estimators=100, max_depth=None):
+# Create pipeline
+def create_pipeline():
     preprocessor = ColumnTransformer(
         transformers=[('num', MinMaxScaler(), ['Open', 'High', 'Low', 'Close', 'Volume', '5_day_MA', '10_day_MA', '20_day_MA', 'RSI'])]
     )
-    # Create the pipeline with imputer and model
     pipeline = Pipeline(steps=[('preprocessor', preprocessor),
-                                ('imputer', SimpleImputer(strategy='mean')),  # Impute missing values with mean
-                                ('model', RandomForestRegressor(n_estimators=n_estimators, max_depth=max_depth, random_state=42))])
+                                ('imputer', SimpleImputer(strategy='mean')),
+                                ('model', RandomForestRegressor(random_state=42))])
     return pipeline
 
-# Function to perform grid search for hyperparameter tuning
+# Hyperparameter tuning
 def tune_hyperparameters(X_train, y_train):
     param_grid = {
-        'model__n_estimators': [50, 100, 150],
-        'model__max_depth': [10, 20, None],
-        'model__min_samples_split': [2, 5, 10],
-        'model__min_samples_leaf': [1, 2, 4]
+        'model__n_estimators': [100, 200],
+        'model__max_depth': [10, 20, None]
     }
     pipeline = create_pipeline()
     grid_search = GridSearchCV(pipeline, param_grid, cv=3, n_jobs=-1, verbose=2)
     grid_search.fit(X_train, y_train)
     return grid_search.best_estimator_
 
-# Fetch live data for prediction
-def fetch_live_data(stock_symbol):
-    stock = yf.Ticker(stock_symbol)
-    live_data = stock.history(period="1d")
-    live_data_dict = {
-        'Open': live_data['Open'][0],
-        'High': live_data['High'][0],
-        'Low': live_data['Low'][0],
-        'Close': live_data['Close'][0],
-        'Volume': live_data['Volume'][0],
-        '5_day_MA': live_data['Close'].rolling(window=5).mean().iloc[-1],
-        '10_day_MA': live_data['Close'].rolling(window=10).mean().iloc[-1],
-        '20_day_MA': live_data['Close'].rolling(window=20).mean().iloc[-1],
-        'RSI': 100 - (100 / (1 + (live_data['Close'].diff().gt(0).rolling(window=14).sum() / 
-                                  live_data['Close'].diff().lt(0).rolling(window=14).sum())))
-    }
-    return live_data_dict
-
-# Main function for Streamlit
+# Main app
 def main():
     st.title("Stock Price Predictor")
+    st.sidebar.title("Stock Symbols")
     
-    stock_symbol = st.text_input("Enter the stock symbol (e.g., 'ADANIPOWER.NS'):")
+    stock_list = get_stock_list()
+    st.sidebar.dataframe(stock_list, height=400, width=300)
     
-    if stock_symbol:
-        df = fetch_historical_data(stock_symbol)
-        df = add_technical_indicators(df)
+    selected_stock = st.sidebar.selectbox("Select a stock:", [""] + stock_list["Stock Symbol"].tolist())
+    
+    live_data = None  # Initialize live_data variable
+    target_feature = None
+    
+    if selected_stock:
+        st.write(f"Selected Stock: {selected_stock}")
         
-        target_feature = st.selectbox("Which feature would you like to predict?", ['Open', 'Close', 'Volume', 'High', 'Low'])
+        target_feature = st.selectbox("Which feature would you like to predict?", ['', 'Open', 'Close', 'Volume', 'High', 'Low'])
         
-        features, target = prepare_data(df, target_feature)
-        
-        X_train, X_test, y_train, y_test = train_test_split(features, target, test_size=0.2, random_state=42)
-        
-        choice = st.selectbox("Would you like to:", ["Fetch live data", "Manually input custom data"])
-        
-        if choice == "Fetch live data":
-            live_data = fetch_live_data(stock_symbol)
-            st.write("Live Data Fetched:", live_data)
-            live_df = pd.DataFrame([live_data])
+        if target_feature:
+            choice = st.radio("Choose Prediction Mode:", ["", "Fetch live data", "Manually input custom data"])
             
-            with st.spinner("Training the model... Please wait."):
-                pipeline = tune_hyperparameters(X_train, y_train)
-                joblib.dump(pipeline, 'stock_predictor_model.pkl')
-            
-            prediction = pipeline.predict(live_df)
-            st.write(f"Predicted {target_feature} for the next day based on live data: {prediction[0]}")
-        
-        elif choice == "Manually input custom data":
-            with st.form("manual_input_form"):
-                st.write("Enter all values:")
-                open_price = st.number_input("Enter the 'Open' price:", value=0.0)
-                high_price = st.number_input("Enter the 'High' price:", value=0.0)
-                low_price = st.number_input("Enter the 'Low' price:", value=0.0)
-                close_price = st.number_input("Enter the 'Close' price:", value=0.0)
-                volume = st.number_input("Enter the 'Volume' for the day:", value=0)
-                submitted = st.form_submit_button("Submit")
-            
-            if submitted:
-                manual_data = {
-                    'Open': open_price,
-                    'High': high_price,
-                    'Low': low_price,
-                    'Close': close_price,
-                    'Volume': volume,
-                    '5_day_MA': (open_price + high_price + low_price + close_price) / 4,  # Example of custom MA calculation
-                    '10_day_MA': (open_price + high_price + low_price + close_price) / 4,  # Example of custom MA calculation
-                    '20_day_MA': (open_price + high_price + low_price + close_price) / 4,  # Example of custom MA calculation
-                    'RSI': 50  # Placeholder for RSI
-                }
+            if choice == "Fetch live data":
+                df = fetch_historical_data(selected_stock)
+                df = add_technical_indicators(df)
+                live_data = df.tail(1)  # Fetch the latest data row
+                st.write("Live Data Fetched:")
+                st.dataframe(live_data)
                 
-                manual_df = pd.DataFrame([manual_data])
-                
-                with st.spinner("Training the model... Please wait."):
+                # Train the model and show prediction immediately
+                with st.spinner("Training the model..."):
+                    features, target = prepare_data(df, target_feature)
+                    X_train, X_test, y_train, y_test = train_test_split(features, target, test_size=0.2, random_state=42)
                     pipeline = tune_hyperparameters(X_train, y_train)
-                    joblib.dump(pipeline, 'stock_predictor_model.pkl')
+                    st.write(f"Model R-squared score on test data: {pipeline.score(X_test, y_test)}")
+                    
+                    if live_data is not None:
+                        prediction = pipeline.predict(live_data)
+                        st.write(f"Predicted {target_feature} for the next day: {prediction[0]}")
+                    
+            elif choice == "Manually input custom data":
+                with st.form("manual_input_form"):
+                    st.write("Enter all values:")
+                    open_price = st.number_input("Enter the 'Open' price:", value=0.0)
+                    high_price = st.number_input("Enter the 'High' price:", value=0.0)
+                    low_price = st.number_input("Enter the 'Low' price:", value=0.0)
+                    close_price = st.number_input("Enter the 'Close' price:", value=0.0)
+                    volume = st.number_input("Enter the 'Volume' for the day:", value=0)
+                    submitted = st.form_submit_button("Submit")
                 
-                prediction = pipeline.predict(manual_df)
-                st.write(f"Predicted {target_feature} for the next day based on the provided manual data: {prediction[0]}")
-
+                if submitted:
+                    manual_data = {
+                        'Open': open_price,
+                        'High': high_price,
+                        'Low': low_price,
+                        'Close': close_price,
+                        'Volume': volume,
+                        '5_day_MA': (open_price + high_price + low_price + close_price) / 4,
+                        '10_day_MA': (open_price + high_price + low_price + close_price) / 4,
+                        '20_day_MA': (open_price + high_price + low_price + close_price) / 4,
+                        'RSI': 50  # Placeholder RSI
+                    }
+                    live_data = pd.DataFrame([manual_data])
+                    
+                    # Train the model and show prediction immediately
+                    with st.spinner("Training the model..."):
+                        df = fetch_historical_data(selected_stock)
+                        df = add_technical_indicators(df)
+                        features, target = prepare_data(df, target_feature)
+                        X_train, X_test, y_train, y_test = train_test_split(features, target, test_size=0.2, random_state=42)
+                        pipeline = tune_hyperparameters(X_train, y_train)
+                        st.write(f"Model R-squared score on test data: {pipeline.score(X_test, y_test)}")
+                        
+                        if live_data is not None:
+                            prediction = pipeline.predict(live_data)
+                            st.write(f"Predicted {target_feature} for the next day: {prediction[0]}")
+        
 if __name__ == "__main__":
     main()
