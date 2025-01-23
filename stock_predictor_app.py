@@ -115,17 +115,18 @@ import streamlit as st
 import threading
 
 def speak_text(text):
-    # Inject JavaScript for client-side text-to-speech
-    js_code = f"""
-    <script>
-        var msg = new SpeechSynthesisUtterance();
-        msg.text = `{text}`;
-        msg.rate = 1;  // Speech rate
-        msg.volume = 1;  // Volume level (0 to 1)
-        window.speechSynthesis.speak(msg);
-    </script>
-    """
-    st.markdown(js_code, unsafe_allow_html=True)
+    try:
+        import os
+        if "STREAMLIT" not in os.environ:  # Check if the app is running locally
+            engine = pyttsx3.init()
+            engine.setProperty('rate', 150)  # Speed of speech
+            engine.setProperty('volume', 1)  # Volume level (0.0 to 1.0)
+            engine.say(text)
+            engine.runAndWait()
+        else:
+            st.warning("Text-to-speech is not supported in the deployed environment.")
+    except Exception as e:
+        st.error(f"An error occurred with text-to-speech: {str(e)}")
 
 
 # Modify fetch_stock_info function to shorten, speak and print the information
