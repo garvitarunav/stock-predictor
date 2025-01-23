@@ -114,13 +114,37 @@ from bs4 import BeautifulSoup
 import streamlit as st
 import threading
 
-# Function to convert text to speech
+import os
+import streamlit as st
+from gtts import gTTS
+
 def speak_text(text):
-    engine = pyttsx3.init()
-    engine.setProperty('rate', 150)  # Speed of speech
-    engine.setProperty('volume', 1)  # Volume level (0.0 to 1.0)
-    engine.say(text)
-    engine.runAndWait()
+    if os.environ.get("STREAMLIT_SERVER_PORT"):  # Deployed environment
+        html_code = f"""
+        <script>
+            try {{
+                var msg = new SpeechSynthesisUtterance();
+                msg.text = `{text}`;
+                msg.rate = 1;  // Speech rate
+                msg.volume = 1;  // Volume level (0 to 1)
+                msg.onerror = function(event) {{
+                    console.error("Speech synthesis error:", event.error);
+                }};
+                msg.onend = function() {{
+                    console.log("Speech synthesis completed.");
+                }};
+                window.speechSynthesis.speak(msg);
+            }} catch (e) {{
+                console.error("Speech synthesis failed:", e);
+            }}
+        </script>
+        """
+        st.components.v1.html(html_code, height=0)
+    else:  # Local environment
+        tts = gTTS(text)
+        tts.save("output.mp3")
+        st.audio("output.mp3", format="audio/mp3")
+
 
 # Modify fetch_stock_info function to shorten, speak and print the information
 def fetch_stock_info(stock_name):
