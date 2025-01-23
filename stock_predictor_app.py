@@ -71,9 +71,6 @@ def fetch_historical_data(stock_symbol):
     return df
 
 
-
-
-
 # Add technical indicators
 def add_technical_indicators(df):
     df['5_day_MA'] = df['Close'].rolling(window=5).mean()
