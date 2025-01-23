@@ -7,6 +7,11 @@ from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
 from sklearn.compose import ColumnTransformer
 import streamlit as st
+import requests
+from bs4 import BeautifulSoup
+import pyttsx3
+import threading
+
 
 # Predefined stock list for NSE and BSE
 def get_stock_list():
@@ -58,7 +63,6 @@ def get_stock_list():
     }
     return pd.DataFrame(data)
 
-
 # Fetch historical data
 def fetch_historical_data(stock_symbol):
     stock_data = yf.Ticker(stock_symbol)
@@ -72,7 +76,7 @@ def add_technical_indicators(df):
     df['5_day_MA'] = df['Close'].rolling(window=5).mean()
     df['10_day_MA'] = df['Close'].rolling(window=10).mean()
     df['20_day_MA'] = df['Close'].rolling(window=20).mean()
-    df['RSI'] = 100 - (100 / (1 + (df['Close'].diff().gt(0).rolling(window=14).sum() /
+    df['RSI'] = 100 - (100 / (1 + (df['Close'].diff().gt(0).rolling(window=14).sum() / 
                                    df['Close'].diff().lt(0).rolling(window=14).sum())))
     df = df.dropna()
     return df
@@ -87,8 +91,7 @@ def prepare_data(df, target_feature):
 # Create pipeline
 def create_pipeline():
     preprocessor = ColumnTransformer(
-        transformers=[('num', MinMaxScaler(), ['Open', 'High', 'Low', 'Close', 'Volume', '5_day_MA', '10_day_MA', '20_day_MA', 'RSI'])]
-    )
+        transformers=[('num', MinMaxScaler(), ['Open', 'High', 'Low', 'Close', 'Volume', '5_day_MA', '10_day_MA', '20_day_MA', 'RSI'])])
     pipeline = Pipeline(steps=[('preprocessor', preprocessor),
                                 ('imputer', SimpleImputer(strategy='mean')),
                                 ('model', RandomForestRegressor(random_state=42))])
@@ -97,13 +100,47 @@ def create_pipeline():
 # Hyperparameter tuning
 def tune_hyperparameters(X_train, y_train):
     param_grid = {
-        'model__n_estimators': [100, 200],
+        'model__n_estimators': [50, 75],
         'model__max_depth': [10, 20, None]
     }
     pipeline = create_pipeline()
     grid_search = GridSearchCV(pipeline, param_grid, cv=3, n_jobs=-1, verbose=2)
     grid_search.fit(X_train, y_train)
     return grid_search.best_estimator_
+
+
+
+# Function to convert text to speech
+def speak_text(text):
+    engine = pyttsx3.init()
+    engine.setProperty('rate', 150)  # Speed of speech
+    engine.setProperty('volume', 1)  # Volume level (0.0 to 1.0)
+    engine.say(text)
+    engine.runAndWait()
+
+# Modify fetch_stock_info function to shorten, speak and print the information
+def fetch_stock_info(stock_name):
+    search_query = f"{stock_name} site:en.wikipedia.org"
+    response = requests.get(f"https://en.wikipedia.org/wiki/{stock_name.replace(' ', '_')}")
+    soup = BeautifulSoup(response.text, "html.parser")
+    paragraphs = soup.find_all("p")
+
+    stock_info = ""
+    word_count = 0
+
+    if paragraphs:
+        # Get the first 4 bullet points, limiting to one line each and ensuring total word count is under 100
+        for para in paragraphs:
+            text = para.get_text().strip()
+            words_in_para = text.split()
+            if word_count + len(words_in_para) <= 100:
+                stock_info += f"• {text}\n"
+                word_count += len(words_in_para)
+            else:
+                break
+    
+    # Return stock info with a maximum of 100 words
+    return stock_info if stock_info else "No information available."
 
 # Main app
 def main():
@@ -119,10 +156,31 @@ def main():
     target_feature = None
     
     if selected_stock:
-        st.write(f"Selected Stock: {selected_stock}")
+        stock_name = stock_list.loc[stock_list['Stock Symbol'] == selected_stock, 'Stock Name'].values[0]
+        st.write(f"Selected Stock: {stock_name}")
         
+        # Store stock info in session state if it's not already there
+        if 'stock_info' not in st.session_state or st.session_state.selected_stock != selected_stock:
+            # Fetch stock info and store it
+            stock_info = fetch_stock_info(stock_name)
+            st.session_state.stock_info = stock_info
+            st.session_state.selected_stock = selected_stock  # Store the selected stock to track changes
+            
+            # Print the stock info first
+            stock_info_placeholder = st.empty()  # Placeholder for stock info
+            stock_info_placeholder.write(f"Stock Information:\n{stock_info}")  # Print info on the screen
+            
+            # Start a separate thread to speak the stock info (so that it does not block the app)
+            threading.Thread(target=speak_text, args=(stock_info,)).start()
+        
+        else:
+            # If the stock is already selected, just display the stored info
+            st.write("Stock Information:")
+            st.write(st.session_state.stock_info)
+        
+        # Immediately show prediction options after stock info is being spoken
         target_feature = st.selectbox("Which feature would you like to predict?", ['', 'Open', 'Close', 'Volume', 'High', 'Low'])
-        
+
         if target_feature:
             choice = st.radio("Choose Prediction Mode:", ["", "Fetch live data", "Manually input custom data"])
             
@@ -180,6 +238,8 @@ def main():
                         if live_data is not None:
                             prediction = pipeline.predict(live_data)
                             st.write(f"Predicted {target_feature} for the next day: {prediction[0]}")
-        
+
 if __name__ == "__main__":
     main()
+
+
