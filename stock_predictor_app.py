@@ -10,7 +10,6 @@ import streamlit as st
 import requests
 from bs4 import BeautifulSoup
 import pyttsx3
-import threading
 
 
 # Predefined stock list for NSE and BSE
@@ -71,6 +70,10 @@ def fetch_historical_data(stock_symbol):
     df.index = df.index.tz_localize(None)
     return df
 
+
+
+
+
 # Add technical indicators
 def add_technical_indicators(df):
     df['5_day_MA'] = df['Close'].rolling(window=5).mean()
@@ -108,7 +111,11 @@ def tune_hyperparameters(X_train, y_train):
     grid_search.fit(X_train, y_train)
     return grid_search.best_estimator_
 
-
+import pyttsx3
+import requests
+from bs4 import BeautifulSoup
+import streamlit as st
+import threading
 
 # Function to convert text to speech
 def speak_text(text):
