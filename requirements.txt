@@ -2,4 +2,6 @@ yfinance
 pandas
 scikit-learn
 streamlit
-joblib
+requests
+beautifulsoup4
+pyttsx3
