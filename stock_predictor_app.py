@@ -114,13 +114,23 @@ from bs4 import BeautifulSoup
 import streamlit as st
 import threading
 
-# Function to convert text to speech
+import os
+import streamlit as st
+from gtts import gTTS
+
 def speak_text(text):
-    engine = pyttsx3.init()
-    engine.setProperty('rate', 150)  # Speed of speech
-    engine.setProperty('volume', 1)  # Volume level (0.0 to 1.0)
-    engine.say(text)
-    engine.runAndWait()
+    # For the deployed app
+    if os.environ.get("STREAMLIT_SERVER_PORT"):
+        # Use gTTS to generate speech and save as an audio file
+        tts = gTTS(text=text, lang='en')
+        tts.save("output.mp3")
+        st.audio("output.mp3", format="audio/mp3")
+    else:
+        # For local development, use gTTS
+        tts = gTTS(text=text, lang='en')
+        tts.save("output.mp3")
+        st.audio("output.mp3", format="audio/mp3")
+
 
 # Modify fetch_stock_info function to shorten, speak and print the information
 def fetch_stock_info(stock_name):
