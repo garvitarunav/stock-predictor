@@ -114,13 +114,19 @@ from bs4 import BeautifulSoup
 import streamlit as st
 import threading
 
-# Function to convert text to speech
 def speak_text(text):
-    engine = pyttsx3.init()
-    engine.setProperty('rate', 150)  # Speed of speech
-    engine.setProperty('volume', 1)  # Volume level (0.0 to 1.0)
-    engine.say(text)
-    engine.runAndWait()
+    try:
+        import os
+        if "STREAMLIT" not in os.environ:  # Check if the app is running locally
+            engine = pyttsx3.init()
+            engine.setProperty('rate', 150)  # Speed of speech
+            engine.setProperty('volume', 1)  # Volume level (0.0 to 1.0)
+            engine.say(text)
+            engine.runAndWait()
+        else:
+            st.warning("Text-to-speech is not supported in the deployed environment.")
+    except Exception as e:
+        st.error(f"An error occurred with text-to-speech: {str(e)}")
 
 # Modify fetch_stock_info function to shorten, speak and print the information
 def fetch_stock_info(stock_name):
