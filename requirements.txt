@@ -1,7 +1,7 @@
-yfinance==0.2.25
-pandas==1.5.3
-scikit-learn==1.2.0
-streamlit==1.21.0
-requests==2.28.2
-beautifulsoup4==4.12.0
-pyttsx3==2.90
+yfinance
+pandas
+scikit-learn
+streamlit
+requests
+beautifulsoup4
+pyttsx3
