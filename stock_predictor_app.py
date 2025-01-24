@@ -290,7 +290,7 @@ def main():
                     with st.spinner("Training the model..."):
                         df = fetch_historical_data(selected_stock)
                         df = add_technical_indicators(df)
-                        df = df.append(live_data, ignore_index=True)  # Add manual data to historical data
+                        # df = df.append(live_data, ignore_index=True)  # Add manual data to historical data
                         
                         features, target = prepare_data(df, target_feature)
                         X_train, X_test, y_train, y_test = train_test_split(features, target, test_size=0.2, random_state=42)
