@@ -271,6 +271,7 @@ def main():
                     submitted = st.form_submit_button("Submit")
                 
                 if submitted:
+                    # Prepare manual data
                     manual_data = {
                         'Open': open_price,
                         'High': high_price,
@@ -282,45 +283,39 @@ def main():
                         '20_day_MA': (open_price + high_price + low_price + close_price) / 4,
                         'RSI': 50  # Placeholder RSI
                     }
-                    live_data = pd.DataFrame([manual_data])
                     
-                    # Train the model and show prediction immediately
+                    live_data = pd.DataFrame([manual_data])
+
+                    # Re-train the model with manual data
                     with st.spinner("Training the model..."):
                         df = fetch_historical_data(selected_stock)
                         df = add_technical_indicators(df)
+                        df = df.append(live_data, ignore_index=True)  # Add manual data to historical data
+                        
                         features, target = prepare_data(df, target_feature)
                         X_train, X_test, y_train, y_test = train_test_split(features, target, test_size=0.2, random_state=42)
                         pipeline = tune_hyperparameters(X_train, y_train)
-                        st.markdown(
-                        f"""
-                        <div style="
-                            background-color: #f9f9f9; 
-                            padding: 15px; 
-                            border-radius: 10px; 
-                            border: 1px solid #e0e0e0; 
-                            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
-                        ">
-                            <h4 style="color:rgb(84, 74, 226); margin-bottom: 10px;">Model Performance</h4>
-                            <p style="font-size: 18px; color: #333; margin: 0;">
-                                <b>R-squared Score on Test Data:</b> {r_squared_score:.4f}
-                            </p>
-                        </div>
-                        """,
-                        unsafe_allow_html=True
-                    )
                         
+                        # Calculate the R-squared score for the new model
+                        r_squared_score = pipeline.score(X_test, y_test)
+
+                        st.markdown(
+                            f"""
+                            <div style="background-color: #f9f9f9; padding: 15px; border-radius: 10px; border: 1px solid #e0e0e0; box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);">
+                                <h4 style="color:rgb(84, 74, 226); margin-bottom: 10px;">Model Performance</h4>
+                                <p style="font-size: 18px; color: #333; margin: 0;">
+                                    <b>R-squared Score on Test Data:</b> {r_squared_score:.4f}
+                                </p>
+                            </div>
+                            """,
+                            unsafe_allow_html=True
+                        )
+
                         if live_data is not None:
                             prediction = pipeline.predict(live_data)
-                            # Display the predicted value with enhanced UI
                             st.markdown(
                                 f"""
-                                <div style="
-                                    background-color: #f9f9f9; 
-                                    padding: 15px; 
-                                    border-radius: 10px; 
-                                    border: 1px solid #e0e0e0; 
-                                    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
-                                ">
+                                <div style="background-color: #f9f9f9; padding: 15px; border-radius: 10px; border: 1px solid #e0e0e0; box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);">
                                     <h4 style="color:rgb(226, 74, 74); margin-bottom: 10px;">Prediction Result</h4>
                                     <p style="font-size: 18px; color: #333; margin: 0;">
                                         <b>Predicted {target_feature} for the next day:</b> {prediction[0]:.4f}
@@ -329,6 +324,7 @@ def main():
                                 """,
                                 unsafe_allow_html=True
                             )
+
 
 
 if __name__ == "__main__":
