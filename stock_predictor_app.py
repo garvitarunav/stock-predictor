@@ -148,8 +148,16 @@ def fetch_stock_info(stock_name):
 
 # Main app
 def main():
-    st.title("Stock Price Predictor")
-    st.sidebar.title("Stock Symbols")
+    # Changing the Title 
+    st.markdown("""
+    <span style='font-family:BODONI POSTER; font-size:48px; font-weight:bold;'>Stock Price Predictor</span>
+    """, unsafe_allow_html=True)
+
+
+    st.sidebar.markdown("""
+    <span style='font-family:Dom Casual; font-size:28px; font-weight:bold;'>Stock Symbols</span>
+    """, unsafe_allow_html=True)
+
     
     stock_list = get_stock_list()
     st.sidebar.dataframe(stock_list, height=400, width=300)
@@ -161,7 +169,11 @@ def main():
     
     if selected_stock:
         stock_name = stock_list.loc[stock_list['Stock Symbol'] == selected_stock, 'Stock Name'].values[0]
-        st.write(f"Selected Stock: {stock_name}")
+        st.markdown(f"""
+        <span style='font-family:Georgia; font-size:20px; font-weight:bold;'>Selected Stock: </span>
+        <span style='font-family:Arial; font-size:18px;'>{stock_name}</span>
+        """, unsafe_allow_html=True)
+
         
         # Store stock info in session state if it's not already there
         if 'stock_info' not in st.session_state or st.session_state.selected_stock != selected_stock:
@@ -172,7 +184,11 @@ def main():
             
             # Print the stock info first
             stock_info_placeholder = st.empty()  # Placeholder for stock info
-            stock_info_placeholder.write(f"Stock Information:\n{stock_info}")  # Print info on the screen
+            stock_info_placeholder.markdown(f"""
+            <span style='font-family:Georgia; font-size:18px; font-weight:bold;'>Stock Information:</span>
+            <span style='font-family:Arial; font-size:16px;'>{stock_info}</span>
+            """, unsafe_allow_html=True)
+            # Print info on the screen
             
             # Start a separate thread to speak the stock info (so that it does not block the app)
             threading.Thread(target=speak_text, args=(stock_info,)).start()
@@ -200,11 +216,49 @@ def main():
                     features, target = prepare_data(df, target_feature)
                     X_train, X_test, y_train, y_test = train_test_split(features, target, test_size=0.2, random_state=42)
                     pipeline = tune_hyperparameters(X_train, y_train)
-                    st.write(f"Model R-squared score on test data: {pipeline.score(X_test, y_test)}")
+                    # Calculate the R-squared score
+                    r_squared_score = pipeline.score(X_test, y_test)
+
+                    # Improved UI with a card-like display
+                    st.markdown(
+                        f"""
+                        <div style="
+                            background-color: #f9f9f9; 
+                            padding: 15px; 
+                            border-radius: 10px; 
+                            border: 1px solid #e0e0e0; 
+                            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
+                        ">
+                            <h4 style="color:rgb(92, 74, 226); margin-bottom: 10px;">Model Performance</h4>
+                            <p style="font-size: 18px; color: #333; margin: 0;">
+                                <b>R-squared Score on Test Data:</b> {r_squared_score:.4f}
+                            </p>
+                        </div>
+                        """,
+                        unsafe_allow_html=True
+                    )
+
                     
                     if live_data is not None:
                         prediction = pipeline.predict(live_data)
-                        st.write(f"Predicted {target_feature} for the next day: {prediction[0]}")
+                        # Display the predicted value with enhanced UI
+                        st.markdown(
+                            f"""
+                            <div style="
+                                background-color: #f9f9f9; 
+                                padding: 15px; 
+                                border-radius: 10px; 
+                                border: 1px solid #e0e0e0; 
+                                box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
+                            ">
+                                <h4 style="color:rgb(226, 74, 74); margin-bottom: 10px;">Prediction Result</h4>
+                                <p style="font-size: 18px; color: #333; margin: 0;">
+                                    <b>Predicted {target_feature} for the next day:</b> {prediction[0]:.4f}
+                                </p>
+                            </div>
+                            """,
+                            unsafe_allow_html=True
+                        )
                     
             elif choice == "Manually input custom data":
                 with st.form("manual_input_form"):
@@ -237,11 +291,45 @@ def main():
                         features, target = prepare_data(df, target_feature)
                         X_train, X_test, y_train, y_test = train_test_split(features, target, test_size=0.2, random_state=42)
                         pipeline = tune_hyperparameters(X_train, y_train)
-                        st.write(f"Model R-squared score on test data: {pipeline.score(X_test, y_test)}")
+                        st.markdown(
+                        f"""
+                        <div style="
+                            background-color: #f9f9f9; 
+                            padding: 15px; 
+                            border-radius: 10px; 
+                            border: 1px solid #e0e0e0; 
+                            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
+                        ">
+                            <h4 style="color:rgb(84, 74, 226); margin-bottom: 10px;">Model Performance</h4>
+                            <p style="font-size: 18px; color: #333; margin: 0;">
+                                <b>R-squared Score on Test Data:</b> {r_squared_score:.4f}
+                            </p>
+                        </div>
+                        """,
+                        unsafe_allow_html=True
+                    )
                         
                         if live_data is not None:
                             prediction = pipeline.predict(live_data)
-                            st.write(f"Predicted {target_feature} for the next day: {prediction[0]}")
+                            # Display the predicted value with enhanced UI
+                            st.markdown(
+                                f"""
+                                <div style="
+                                    background-color: #f9f9f9; 
+                                    padding: 15px; 
+                                    border-radius: 10px; 
+                                    border: 1px solid #e0e0e0; 
+                                    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
+                                ">
+                                    <h4 style="color:rgb(226, 74, 74); margin-bottom: 10px;">Prediction Result</h4>
+                                    <p style="font-size: 18px; color: #333; margin: 0;">
+                                        <b>Predicted {target_feature} for the next day:</b> {prediction[0]:.4f}
+                                    </p>
+                                </div>
+                                """,
+                                unsafe_allow_html=True
+                            )
+
 
 if __name__ == "__main__":
     main()
