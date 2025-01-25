@@ -11,8 +11,13 @@ import requests
 from bs4 import BeautifulSoup
 import pyttsx3
 import threading
-
+import io
 # Predefined stock list for NSE and BSE
+import tempfile
+import os
+import time
+
+@st.cache_data
 def get_stock_list():
     data = {
         "Stock Symbol": [
@@ -62,13 +67,28 @@ def get_stock_list():
     }
     return pd.DataFrame(data)
 
+
 # Fetch historical data
 def fetch_historical_data(stock_symbol):
+    # Get user inputs from the sidebar
+    period = st.sidebar.radio("Select period (GIVES YOU THE PREDICTION BY TRAINING THE MODEL FOR THE CHOSEN TIME PERIOD)", ["1y","2y","3y","4y","5y","6y","7y"])
+    interval = st.sidebar.radio("Select interval", ["1d"])
+
+    # Display the selected period and interval for the user
+    st.sidebar.write(f"Selected period: {period}")
+    st.sidebar.write(f"Selected interval: {interval}")
+
+    # Fetch stock data using yfinance
     stock_data = yf.Ticker(stock_symbol)
-    df = stock_data.history(period="1y", interval="1d")
+    df = stock_data.history(period=period, interval=interval)
+    
+    # Process and display the stock data
     df.index = pd.to_datetime(df.index)
     df.index = df.index.tz_localize(None)
-    return df
+    return df 
+    # Display the data in the main area
+    st.write(f"Historical Data for {stock_symbol}:")
+    st.dataframe(df)
 
 # Add technical indicators
 def add_technical_indicators(df):
@@ -158,9 +178,9 @@ def main():
     <span style='font-family:Dom Casual; font-size:28px; font-weight:bold;'>Stock Symbols</span>
     """, unsafe_allow_html=True)
 
-    
     stock_list = get_stock_list()
     st.sidebar.dataframe(stock_list, height=400, width=300)
+
     
     selected_stock = st.sidebar.selectbox("Select a stock:", [""] + stock_list["Stock Symbol"].tolist())
     
