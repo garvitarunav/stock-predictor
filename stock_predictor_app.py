@@ -16,6 +16,7 @@ import io
 import tempfile
 import os
 import time
+import datetime
 
 @st.cache_data
 def get_stock_list():
@@ -66,6 +67,24 @@ def get_stock_list():
         ]
     }
     return pd.DataFrame(data)
+
+def show_calendar():
+    # Get today's date and set the range for 10 years before and after
+    today = datetime.date.today()
+    min_date = today.replace(year=today.year - 20)  # 20 years ago
+    max_date = today.replace(year=today.year + 20)  # 20 years ahead
+
+    # Show the calendar with the current date as default
+    selected_date = st.date_input(
+        "Calender for time navigation", 
+        value=today,  # Default value set to today's date
+        min_value=min_date,  # 10 years before today
+        max_value=max_date,  # 10 years after today
+        help="Select a date from the calendar"
+    )
+    
+    # Display the selected date
+    st.write(f"Selected Date: {selected_date}")
 
 
 # Fetch historical data
@@ -173,6 +192,8 @@ def main():
     <span style='font-family:BODONI POSTER; font-size:48px; font-weight:bold;'>Stock Price Predictor</span>
     """, unsafe_allow_html=True)
 
+    # Call the function in your Streamlit app
+    show_calendar()
 
     st.sidebar.markdown("""
     <span style='font-family:Dom Casual; font-size:28px; font-weight:bold;'>Stock Symbols</span>
