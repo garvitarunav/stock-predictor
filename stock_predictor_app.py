@@ -365,7 +365,7 @@ def main():
                     
                     try:
                         for column in df.columns:
-                            fig, ax = plt.subplots(figsize=(12, 6))
+                            fig, ax = plt.subplots(figsize=(12, 10))
                             ax.plot(df.index, df[column], label=column)
                             ax.set_title(f"{stock_name} - {column}", fontsize=16)
                             ax.set_xlabel("Date", fontsize=12)
