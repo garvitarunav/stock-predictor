@@ -17,6 +17,12 @@ import tempfile
 import os
 import time
 import datetime
+import matplotlib.pyplot as plt
+
+
+
+
+
 
 @st.cache_data
 def get_stock_list():
@@ -187,102 +193,87 @@ def fetch_stock_info(stock_name):
 
 # Main app
 def main():
-    # Changing the Title 
-    st.markdown("""
-    <span style='font-family:BODONI POSTER; font-size:48px; font-weight:bold;'>Stock Price Predictor</span>
-    """, unsafe_allow_html=True)
+    st.sidebar.title("Navigation")
+    tab = st.sidebar.radio("Go to", ["Price Prediction", "Stock Graphs"])
+    if tab == "Price Prediction":
+        
 
-    # Call the function in your Streamlit app
-    show_calendar()
 
-    st.sidebar.markdown("""
-    <span style='font-family:Dom Casual; font-size:28px; font-weight:bold;'>Stock Symbols</span>
-    """, unsafe_allow_html=True)
 
-    stock_list = get_stock_list()
-    st.sidebar.dataframe(stock_list, height=400, width=300)
-
-    
-    selected_stock = st.sidebar.selectbox("Select a stock:", [""] + stock_list["Stock Symbol"].tolist())
-    
-    live_data = None  # Initialize live_data variable
-    target_feature = None
-    
-    if selected_stock:
-        stock_name = stock_list.loc[stock_list['Stock Symbol'] == selected_stock, 'Stock Name'].values[0]
-        st.markdown(f"""
-        <span style='font-family:Georgia; font-size:20px; font-weight:bold;'>Selected Stock: </span>
-        <span style='font-family:Arial; font-size:18px;'>{stock_name}</span>
+        # Changing the Title 
+        st.markdown("""
+        <span style='font-family:BODONI POSTER; font-size:48px; font-weight:bold;'>Stock Price Predictor</span>
         """, unsafe_allow_html=True)
 
+        # Call the function in your Streamlit app
+        show_calendar()
+
+        st.sidebar.markdown("""
+        <span style='font-family:Dom Casual; font-size:28px; font-weight:bold;'>Stock Symbols</span>
+        """, unsafe_allow_html=True)
+
+        stock_list = get_stock_list()
+        st.sidebar.dataframe(stock_list, height=400, width=300)
+
         
-        # Store stock info in session state if it's not already there
-        if 'stock_info' not in st.session_state or st.session_state.selected_stock != selected_stock:
-            # Fetch stock info and store it
-            stock_info = fetch_stock_info(stock_name)
-            st.session_state.stock_info = stock_info
-            st.session_state.selected_stock = selected_stock  # Store the selected stock to track changes
-            
-            # Print the stock info first
-            stock_info_placeholder = st.empty()  # Placeholder for stock info
-            stock_info_placeholder.markdown(f"""
-            <span style='font-family:Georgia; font-size:18px; font-weight:bold;'>Stock Information:</span>
-            <span style='font-family:Arial; font-size:16px;'>{stock_info}</span>
+        selected_stock = st.sidebar.selectbox("Select a stock:", [""] + stock_list["Stock Symbol"].tolist())
+        
+        live_data = None  # Initialize live_data variable
+        target_feature = None
+        
+        if selected_stock:
+            stock_name = stock_list.loc[stock_list['Stock Symbol'] == selected_stock, 'Stock Name'].values[0]
+            st.markdown(f"""
+            <span style='font-family:Georgia; font-size:20px; font-weight:bold;'>Selected Stock: </span>
+            <span style='font-family:Arial; font-size:18px;'>{stock_name}</span>
             """, unsafe_allow_html=True)
-            # Print info on the screen
-            
-            # Start a separate thread to speak the stock info (so that it does not block the app)
-            threading.Thread(target=speak_text, args=(stock_info,)).start()
-        
-        else:
-            # If the stock is already selected, just display the stored info
-            st.write("Stock Information:")
-            st.write(st.session_state.stock_info)
-        
-        # Immediately show prediction options after stock info is being spoken
-        target_feature = st.selectbox("Which feature would you like to predict?", ['', 'Open', 'Close', 'High', 'Low'])
 
-        if target_feature:
-            choice = st.radio("Choose Prediction Mode:", ["", "Fetch live data", "Manually input custom data"])
             
-            if choice == "Fetch live data":
-                df = fetch_historical_data(selected_stock)
-                df = add_technical_indicators(df)
-                live_data = df.tail(1)  # Fetch the latest data row
-                st.write("Live Data Fetched:")
-                st.dataframe(live_data)
+            # Store stock info in session state if it's not already there
+            if 'stock_info' not in st.session_state or st.session_state.selected_stock != selected_stock:
+                # Fetch stock info and store it
+                stock_info = fetch_stock_info(stock_name)
+                st.session_state.stock_info = stock_info
+                st.session_state.selected_stock = selected_stock  # Store the selected stock to track changes
                 
-                # Train the model and show prediction immediately
-                with st.spinner("Training the model..."):
-                    features, target = prepare_data(df, target_feature)
-                    X_train, X_test, y_train, y_test = train_test_split(features, target, test_size=0.2, random_state=42)
-                    pipeline = tune_hyperparameters(X_train, y_train)
-                    # Calculate the R-squared score
-                    r_squared_score = pipeline.score(X_test, y_test)
+                # Print the stock info first
+                stock_info_placeholder = st.empty()  # Placeholder for stock info
+                stock_info_placeholder.markdown(f"""
+                <span style='font-family:Georgia; font-size:18px; font-weight:bold;'>Stock Information:</span>
+                <span style='font-family:Arial; font-size:16px;'>{stock_info}</span>
+                """, unsafe_allow_html=True)
+                # Print info on the screen
+                
+                # Start a separate thread to speak the stock info (so that it does not block the app)
+                threading.Thread(target=speak_text, args=(stock_info,)).start()
+            
+            else:
+                # If the stock is already selected, just display the stored info
+                st.write("Stock Information:")
+                st.write(st.session_state.stock_info)
+            
+            # Immediately show prediction options after stock info is being spoken
+            target_feature = st.selectbox("Which feature would you like to predict?", ['', 'Open', 'Close', 'High', 'Low'])
 
-                    # Improved UI with a card-like display
-                    st.markdown(
-                        f"""
-                        <div style="
-                            background-color: #f9f9f9; 
-                            padding: 15px; 
-                            border-radius: 10px; 
-                            border: 1px solid #e0e0e0; 
-                            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
-                        ">
-                            <h4 style="color:rgb(92, 74, 226); margin-bottom: 10px;">Model Performance</h4>
-                            <p style="font-size: 18px; color: #333; margin: 0;">
-                                <b>R-squared Score on Test Data:</b> {r_squared_score:.4f}
-                            </p>
-                        </div>
-                        """,
-                        unsafe_allow_html=True
-                    )
-
+            if target_feature:
+                choice = st.radio("Choose Prediction Mode:", ["", "Fetch live data", "Manually input custom data"])
+                
+                if choice == "Fetch live data":
+                    df = fetch_historical_data(selected_stock)
+                    df = add_technical_indicators(df)
+                    live_data = df.tail(1)  # Fetch the latest data row
+                    st.write("Live Data Fetched:")
+                    st.dataframe(live_data)
                     
-                    if live_data is not None:
-                        prediction = pipeline.predict(live_data)
-                        # Display the predicted value with enhanced UI
+                    # Train the model and show prediction immediately
+                    with st.spinner("Training the model..."):
+                        features, target = prepare_data(df, target_feature)
+                        X_train, X_test, y_train, y_test = train_test_split(features, target, test_size=0.2, random_state=42)
+                        pipeline = tune_hyperparameters(X_train, y_train)
+                        # Calculate the R-squared score
+                        r_squared_score = pipeline.score(X_test, y_test)
+
+                        # Improved UI with a card-like display
                         st.markdown(
                             f"""
                             <div style="
@@ -292,58 +283,7 @@ def main():
                                 border: 1px solid #e0e0e0; 
                                 box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
                             ">
-                                <h4 style="color:rgb(226, 74, 74); margin-bottom: 10px;">Prediction Result</h4>
-                                <p style="font-size: 18px; color: #333; margin: 0;">
-                                    <b>Predicted {target_feature} for the next day:</b> {prediction[0]:.4f}
-                                </p>
-                            </div>
-                            """,
-                            unsafe_allow_html=True
-                        )
-                    
-            elif choice == "Manually input custom data":
-                with st.form("manual_input_form"):
-                    st.write("Enter all values:")
-                    open_price = st.number_input("Enter the 'Open' price:", value=0.0)
-                    high_price = st.number_input("Enter the 'High' price:", value=0.0)
-                    low_price = st.number_input("Enter the 'Low' price:", value=0.0)
-                    close_price = st.number_input("Enter the 'Close' price:", value=0.0)
-                    volume = st.number_input("Enter the 'Volume' for the day:", value=0)
-                    submitted = st.form_submit_button("Submit")
-                
-                if submitted:
-                    # Prepare manual data
-                    manual_data = {
-                        'Open': open_price,
-                        'High': high_price,
-                        'Low': low_price,
-                        'Close': close_price,
-                        'Volume': volume,
-                        '5_day_MA': (open_price + high_price + low_price + close_price) / 4,
-                        '10_day_MA': (open_price + high_price + low_price + close_price) / 4,
-                        '20_day_MA': (open_price + high_price + low_price + close_price) / 4,
-                        'RSI': 50  # Placeholder RSI
-                    }
-                    
-                    live_data = pd.DataFrame([manual_data])
-
-                    # Re-train the model with manual data
-                    with st.spinner("Training the model..."):
-                        df = fetch_historical_data(selected_stock)
-                        df = add_technical_indicators(df)
-                        # df = df.append(live_data, ignore_index=True)  # Add manual data to historical data
-                        
-                        features, target = prepare_data(df, target_feature)
-                        X_train, X_test, y_train, y_test = train_test_split(features, target, test_size=0.2, random_state=42)
-                        pipeline = tune_hyperparameters(X_train, y_train)
-                        
-                        # Calculate the R-squared score for the new model
-                        r_squared_score = pipeline.score(X_test, y_test)
-
-                        st.markdown(
-                            f"""
-                            <div style="background-color: #f9f9f9; padding: 15px; border-radius: 10px; border: 1px solid #e0e0e0; box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);">
-                                <h4 style="color:rgb(84, 74, 226); margin-bottom: 10px;">Model Performance</h4>
+                                <h4 style="color:rgb(92, 74, 226); margin-bottom: 10px;">Model Performance</h4>
                                 <p style="font-size: 18px; color: #333; margin: 0;">
                                     <b>R-squared Score on Test Data:</b> {r_squared_score:.4f}
                                 </p>
@@ -352,11 +292,19 @@ def main():
                             unsafe_allow_html=True
                         )
 
+                        
                         if live_data is not None:
                             prediction = pipeline.predict(live_data)
+                            # Display the predicted value with enhanced UI
                             st.markdown(
                                 f"""
-                                <div style="background-color: #f9f9f9; padding: 15px; border-radius: 10px; border: 1px solid #e0e0e0; box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);">
+                                <div style="
+                                    background-color: #f9f9f9; 
+                                    padding: 15px; 
+                                    border-radius: 10px; 
+                                    border: 1px solid #e0e0e0; 
+                                    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
+                                ">
                                     <h4 style="color:rgb(226, 74, 74); margin-bottom: 10px;">Prediction Result</h4>
                                     <p style="font-size: 18px; color: #333; margin: 0;">
                                         <b>Predicted {target_feature} for the next day:</b> {prediction[0]:.4f}
@@ -365,7 +313,76 @@ def main():
                                 """,
                                 unsafe_allow_html=True
                             )
+                        
+    elif tab == "Stock Graphs":
+        # Title for the section
+        st.markdown("""
+        <span style='font-family:BODONI POSTER; font-size:48px; font-weight:bold;'>Stock Graphs</span>
+        """, unsafe_allow_html=True)
 
+        # Sidebar dropdown for selecting the stock
+        stock_list = get_stock_list()
+        if stock_list.empty:
+            st.sidebar.error("Failed to load stock list. Please try again.")
+            return
+
+        st.sidebar.markdown("""
+        <span style='font-family:Dom Casual; font-size:28px; font-weight:bold;'>Stock Symbols</span>
+        """, unsafe_allow_html=True)
+        st.sidebar.dataframe(stock_list, height=400, width=300)
+
+        selected_stock = st.sidebar.selectbox("Select a stock for graph:", [""] + stock_list["Stock Symbol"].tolist())
+
+        if selected_stock:
+            # Display the selected stock name
+            stock_name = stock_list.loc[stock_list['Stock Symbol'] == selected_stock, 'Stock Name'].values[0]
+            st.markdown(f"""
+            <span style='font-family:Georgia; font-size:20px; font-weight:bold;'>Selected Stock: </span>
+            <span style='font-family:Arial; font-size:18px;'>{stock_name}</span>
+            """, unsafe_allow_html=True)
+
+            # Get the selected period for graphing
+            start_date = st.date_input("Select start date:", value=pd.to_datetime('2020-01-01'))
+            end_date = st.date_input("Select end date:", value=pd.to_datetime('2021-01-01'))
+
+            # Validate that start_date is earlier than end_date
+            if start_date > end_date:
+                st.error("Start date must be earlier than the end date.")
+            else:
+                # Show spinner while fetching data and generating graphs
+                with st.spinner("Fetching data and generating graphs..."):
+                    try:
+                        df = yf.download(selected_stock, start=start_date, end=end_date) # Use yf.download directly
+                        if df.empty:
+                            st.error(f"No historical data found for the selected stock during {start_date} to {end_date}.")
+                            return
+                    except Exception as e:
+                        st.error(f"Error fetching data: {e}")
+                        return
+
+                    # Plotting all features
+                    st.markdown("<span style='font-family:Georgia; font-size:20px; font-weight:bold;'>Stock Features:</span>", unsafe_allow_html=True)
+                    
+                    try:
+                        for column in df.columns:
+                            fig, ax = plt.subplots(figsize=(12, 6))
+                            ax.plot(df.index, df[column], label=column)
+                            ax.set_title(f"{stock_name} - {column}", fontsize=16)
+                            ax.set_xlabel("Date", fontsize=12)
+                            ax.set_ylabel(column, fontsize=12)
+                            ax.legend()
+                            ax.grid(True)
+                            st.pyplot(fig)  # Display each plot individually
+                    except Exception as e:
+                        st.error(f"Error plotting graphs: {e}")
+                        return
+
+
+
+
+
+
+                
 
 
 if __name__ == "__main__":
