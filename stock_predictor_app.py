@@ -344,7 +344,7 @@ def main():
                         with st.spinner("Training the model..."):
                             df = fetch_historical_data(selected_stock)
                             df = add_technical_indicators(df)
-                            df = df.append(live_data, ignore_index=True)  # Add manual data to historical data
+                            # df = df.append(live_data, ignore_index=True)  # Add manual data to historical data
                             # df = df.append(live_data, ignore_index=True)  # Add manual data to historical data
                             
                             features, target = prepare_data(df, target_feature)
