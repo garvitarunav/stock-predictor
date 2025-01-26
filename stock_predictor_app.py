@@ -430,15 +430,37 @@ def main():
                     st.markdown("<span style='font-family:Georgia; font-size:20px; font-weight:bold;'>Stock Features:</span>", unsafe_allow_html=True)
                     
                     try:
-                        for column in df.columns:
-                            fig, ax = plt.subplots(figsize=(12, 8))
-                            ax.plot(df.index, df[column], label=column)
-                            ax.set_title(f"{stock_name} - {column}", fontsize=16)
-                            ax.set_xlabel("Date", fontsize=12)
-                            ax.set_ylabel(column, fontsize=12)
-                            ax.legend()
-                            ax.grid(True)
-                            st.pyplot(fig)  # Display each plot individually
+                        # Plot High and Low in one graph
+                        fig, ax = plt.subplots(figsize=(12, 8))
+                        ax.plot(df.index, df['High'], label='High', color='blue')
+                        ax.plot(df.index, df['Low'], label='Low', color='red')
+                        ax.set_title(f"{stock_name} - High & Low", fontsize=16)
+                        ax.set_xlabel("Date", fontsize=12)
+                        ax.set_ylabel("Price", fontsize=12)
+                        ax.legend()
+                        ax.grid(True)
+                        st.pyplot(fig)  # Display the High and Low graph
+
+                        # Plot Open and Close in another graph
+                        fig, ax = plt.subplots(figsize=(12, 8))
+                        ax.plot(df.index, df['Open'], label='Open', color='green')
+                        ax.plot(df.index, df['Close'], label='Close', color='orange')
+                        ax.set_title(f"{stock_name} - Open & Close", fontsize=16)
+                        ax.set_xlabel("Date", fontsize=12)
+                        ax.set_ylabel("Price", fontsize=12)
+                        ax.legend()
+                        ax.grid(True)
+                        st.pyplot(fig)  # Display the Open and Close graph
+
+                        fig, ax = plt.subplots(figsize=(12, 8))
+                        ax.plot(df.index, df['Volume'], label='Volume', color='purple')
+                        ax.set_title(f"{stock_name} - Volume", fontsize=16)
+                        ax.set_xlabel("Date", fontsize=12)
+                        ax.set_ylabel("Volume", fontsize=12)
+                        ax.legend()
+                        ax.grid(True)
+                        st.pyplot(fig)  # Display the Volume graph
+
                     except Exception as e:
                         st.error(f"Error plotting graphs: {e}")
                         return
