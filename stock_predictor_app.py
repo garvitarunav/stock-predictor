@@ -194,7 +194,7 @@ def fetch_stock_info(stock_name):
 # Main app
 def main():
     st.sidebar.title("Navigation")
-    tab = st.sidebar.radio("Go to", ["Price Prediction", "Stock Graphs"])
+    tab = st.sidebar.radio("Go to", ["Price Prediction", "Stock Graphs", "Live News"])
     if tab == "Price Prediction":
         
 
@@ -464,6 +464,88 @@ def main():
                     except Exception as e:
                         st.error(f"Error plotting graphs: {e}")
                         return
+
+
+
+    elif tab == "Live News":
+        st.markdown("<h1 style='font-size: 34px; font-weight: bold;'>Latest news scraped from different economic websites</h1>", unsafe_allow_html=True)
+
+        news = st.sidebar.selectbox("Select News Source", ["Money Control", "Economic Times"])
+        if news == "Money Control":
+            url = "https://www.moneycontrol.com/"
+            st.write("https://www.moneycontrol.com/")
+            try:
+                # Adding headers to mimic browser behavior
+                headers = {
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
+                }
+                # Make a request to the website
+                response = requests.get(url, headers=headers)
+                response.raise_for_status()  # Raise an error for bad status codes
+
+                # Parse the HTML content
+                soup = BeautifulSoup(response.content, "html.parser")
+
+                # Find the section containing recent news (updated selector)
+                recent_news_section = soup.find("div", class_="clearfix tabs_news_container")
+
+                # Extract news headlines within the section
+                news_headlines = recent_news_section.find_all("li") if recent_news_section else []
+
+                # Remove the first two news items
+                news_headlines = news_headlines[2:] if len(news_headlines) > 2 else []
+
+                if news_headlines:
+                    st.subheader("Latest News from the Indian Stock Market:")
+                    for i, news_item in enumerate(news_headlines[:101], start=1):  # Limiting to first 10 news items
+                        headline = news_item.get_text(strip=True)
+                        st.write(f"\u2022 {headline}")  # Bullet point format
+                else:
+                    st.info("No recent news found or the website structure has changed.")
+
+            except requests.exceptions.RequestException as e:
+                st.error(f"Error fetching the webpage: {e}")
+            except Exception as e:
+                st.error(f"An error occurred: {e}")
+        elif news == "Economic Times":
+            url = "https://economictimes.indiatimes.com/news/economy/articlelist/1286551815.cms"
+            st.write("https://economictimes.indiatimes.com/news/economy/articlelist/1286551815.cms")
+
+            try:
+                # Adding headers to mimic browser behavior
+                headers = {
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
+                }
+                # Make a request to the website
+                response = requests.get(url, headers=headers)
+                response.raise_for_status()  # Raise an error for bad status codes
+
+                # Parse the HTML content
+                soup = BeautifulSoup(response.content, "html.parser")
+
+                # Find the section with specific attributes
+                main_container = soup.find("div", class_="clearfix main_container")
+                target_section = main_container.find(
+                    "section", class_="section_list", id="pageContent", attrs={"data-ga-category": "WEB Finance HomePage"}
+                ) if main_container else None
+
+                # Extract news headlines within the target section
+                news_headlines = target_section.find_all("li") if target_section else []
+
+                if news_headlines:
+                    st.subheader("Latest Economy News from Economic Times:")
+                    for i, news_item in enumerate(news_headlines[:101], start=1):  # Limiting to first 10 news items
+                        headline = news_item.get_text(strip=True)
+                        st.write(f"\u2022 {headline}")  # Bullet point format
+                else:
+                    st.info("No recent news found or the website structure has changed.")
+
+            except requests.exceptions.RequestException as e:
+                st.error(f"Error fetching the webpage: {e}")
+            except Exception as e:
+                st.error(f"An error occurred: {e}")
+
+
 
 
 
