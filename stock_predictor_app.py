@@ -18,6 +18,10 @@ import os
 import time
 import datetime
 import matplotlib.pyplot as plt
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.options import Options
 
 
 
@@ -470,7 +474,7 @@ def main():
     elif tab == "Live News":
         st.markdown("<h1 style='font-size: 34px; font-weight: bold;'>Latest news scraped from different economic websites</h1>", unsafe_allow_html=True)
 
-        news = st.sidebar.selectbox("Select News Source", ["Money Control", "Economic Times"])
+        news = st.sidebar.selectbox("Select News Source", ["Money Control", "Economic Times","HindustanTimes.com"])
         if news == "Money Control":
             url = "https://www.moneycontrol.com/"
             st.write("https://www.moneycontrol.com/")
@@ -507,6 +511,7 @@ def main():
                 st.error(f"Error fetching the webpage: {e}")
             except Exception as e:
                 st.error(f"An error occurred: {e}")
+
         elif news == "Economic Times":
             url = "https://economictimes.indiatimes.com/news/economy/articlelist/1286551815.cms"
             st.write("https://economictimes.indiatimes.com/news/economy/articlelist/1286551815.cms")
@@ -544,16 +549,68 @@ def main():
                 st.error(f"Error fetching the webpage: {e}")
             except Exception as e:
                 st.error(f"An error occurred: {e}")
+        
+        elif news == "HindustanTimes.com":
+            # URL of the Hindustan Times latest news page
+            url = 'https://www.hindustantimes.com/latest-news'
 
+            # Set headers to mimic a real browser request
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
+            }
 
+            # Send a GET request with headers
+            response = requests.get(url, headers=headers)
 
+            # If the status code is not 200, show the error
+            if response.status_code != 200:
+                st.write("Failed to retrieve the news. Please try again later.")
+            else:
+                # Parse the page content using BeautifulSoup
+                soup = BeautifulSoup(response.text, 'html.parser')
 
+                # Find the section with id="dataHolder" and class="listingPage"
+                data_section = soup.find('section', id='dataHolder', class_='listingPage', attrs={'data-url': '/latest-news'})
 
+                # Check if the section is found
+                if not data_section:
+                    st.write("Data section not found on the page.")
+                else:
+                    # Find all divs within the section
+                    divs = data_section.find_all('div')
 
+                    # Check if any divs are found
+                    if not divs:
+                        st.write("No divs found in the data section.")
+                    else:
+                        # Skip the first two news items
+                        news_list = []
+                        for i, div in enumerate(divs):
+                            content = div.get_text(strip=True)
+                            if content:
+                                # Skip first two items
+                                if i >= 2:
+                                    news_list.append(content)
 
+                        # Initialize variables for controlling the flow of displayed news
+                        current_index = 0
+                        news_to_display = []
 
-                
+                        # Loop through and display news in the required pattern
+                        while current_index < len(news_list):
+                            # Add the next news item
+                            news_to_display.append(news_list[current_index])
 
+                            # Update the index to skip the next 6 news items
+                            current_index += 7  # Skip the 6 news items after the current one
+
+                            # Display the current news in bullet points
+                            if news_to_display:
+                                for news in news_to_display:
+                                    st.markdown(f"- {news}")
+
+                                # Reset the news_to_display list for next set of news
+                                news_to_display = []
 
 if __name__ == "__main__":
     main()
