@@ -546,6 +546,7 @@ def main():
                 st.error(f"An error occurred: {e}")
         
         elif news == "HindustanTimes.com":
+            st.write("https://www.hindustantimes.com/latest-news")
             # URL of the Hindustan Times latest news page
             url = 'https://www.hindustantimes.com/latest-news'
 
