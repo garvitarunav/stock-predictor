@@ -18,11 +18,6 @@ import os
 import time
 import datetime
 import matplotlib.pyplot as plt
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.options import Options
-
 
 
 
