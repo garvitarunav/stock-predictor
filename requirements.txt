@@ -6,3 +6,5 @@ requests
 beautifulsoup4
 pyttsx3
 matplotlib
+python-dotenv
+
