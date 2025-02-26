@@ -81,7 +81,7 @@ def show_calendar():
 
     # Show the calendar with the current date as default
     selected_date = st.date_input(
-        "Calender for time navigation", 
+        "Calender", 
         value=today,  # Default value set to today's date
         min_value=min_date,  # 10 years before today
         max_value=max_date,  # 10 years after today
@@ -115,12 +115,12 @@ def fetch_historical_data(stock_symbol):
     st.dataframe(df)
 
 # Add technical indicators
-def add_technical_indicators(df):
-    df['5_day_MA'] = df['Close'].rolling(window=5).mean()
-    df['10_day_MA'] = df['Close'].rolling(window=10).mean()
-    df['20_day_MA'] = df['Close'].rolling(window=20).mean()
-    df['RSI'] = 100 - (100 / (1 + (df['Close'].diff().gt(0).rolling(window=14).sum() / 
-                                   df['Close'].diff().lt(0).rolling(window=14).sum())))
+def add_technical_indicators(df,target_feature):
+    df['5_day_MA'] = df[target_feature].rolling(window=5).mean()
+    df['10_day_MA'] = df[target_feature].rolling(window=10).mean()
+    df['20_day_MA'] = df[target_feature].rolling(window=20).mean()
+    df['RSI'] = 100 - (100 / (1 + (df[target_feature].diff().gt(0).rolling(window=14).sum() / 
+                                   df[target_feature].diff().lt(0).rolling(window=14).sum())))
 
     df = df.dropna()
     return df
@@ -219,7 +219,7 @@ def chatbot_ui():
 
 # Main app
 def main():
-    st.title("Secure Streamlit App")
+   
     
     correct_password = "gtm"
     
@@ -284,7 +284,7 @@ def main():
                     
                     if choice == "Fetch live data":
                         df = fetch_historical_data(selected_stock)
-                        df = add_technical_indicators(df)
+                        df = add_technical_indicators(df,target_feature)
                         live_data = df.tail(1)
                         st.write("Live Data Fetched:")
                         st.dataframe(live_data)
