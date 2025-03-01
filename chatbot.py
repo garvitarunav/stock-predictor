@@ -6,7 +6,7 @@ from bs4 import BeautifulSoup
 
 # Load API key from .env file
 load_dotenv()
-SERPAPI_KEY = os.getenv("SERPAPI_KEY")
+SERPAPI_KEY = os.getenv("serp_api")
 
 def search_google(query):
     """Fetches top search result from Google using SerpAPI."""
