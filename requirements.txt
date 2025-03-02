@@ -6,11 +6,4 @@ requests
 beautifulsoup4
 pyttsx3
 matplotlib
-datetime
 numpy
-threading
-io
-tempfile
-os
-time
-collections
