@@ -9,4 +9,6 @@ matplotlib
 numpy
 transformers
 python-dotenv
+youtube-transcript-api
+
 

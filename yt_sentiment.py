@@ -1,7 +1,6 @@
 import streamlit as st
 import re
 from urllib.parse import urlparse, parse_qs
-from youtube_transcript_api import YouTubeTranscriptApi
 import matplotlib.pyplot as plt
 from wordcloud import WordCloud
 import nltk
