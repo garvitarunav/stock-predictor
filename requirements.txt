@@ -7,8 +7,6 @@ beautifulsoup4
 pyttsx3
 matplotlib
 python-dotenv
-transformers
-time
 collections
 
 
