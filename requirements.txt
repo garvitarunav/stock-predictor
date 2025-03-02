@@ -11,5 +11,6 @@ transformers
 python-dotenv
 youtube-transcript-api
 wordcloud
+nltk
 
 
