@@ -6,7 +6,7 @@ from bs4 import BeautifulSoup
 
 # Load API key from .env file
 load_dotenv()
-SERPAPI_KEY = os.getenv("serp_api")
+SERPAPI_KEY = os.getenv("SERPAPI_KEY")
 
 def search_google(query):
     """Fetches top search result from Google using SerpAPI."""
@@ -69,14 +69,4 @@ def get_detailed_answer(query):
     
     return f"🔹 **{title}**\n\n{full_content}\n\n[Read more]({link})"
 
-# Streamlit UI
-st.title("📈 Stock Market & Finance Chatbot")
-st.write("Ask any stock market, finance, or trading-related question!")
-
-user_query = st.text_input("💬 Enter your question:")
-
-if user_query:
-    with st.spinner("Searching & Extracting Answer... 🔍"):
-        answer = get_detailed_answer(user_query)
-        st.write("📢 **Bot's Response:**")
-        st.markdown(answer, unsafe_allow_html=True)
+    

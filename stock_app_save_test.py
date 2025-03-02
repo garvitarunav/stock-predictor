@@ -19,10 +19,10 @@ import time
 import datetime
 import matplotlib.pyplot as plt
 import time
-from transformers import pipeline
 from collections import Counter
 from chatbot import *  # Import the saved functions
-from sentiment import *   
+from sentiment import *    
+from yt_sentiment import *
 
 
 
@@ -242,7 +242,7 @@ def main():
                 st.error("Wrong password. Please try again.")
     else:
         st.sidebar.title("Navigation")
-        tab = st.sidebar.selectbox("Go to", ["Price Prediction", "Stock Graphs", "Live News","Chatbot"])
+        tab = st.sidebar.selectbox("Go to", ["Price Prediction", "Stock Graphs", "Live News","Chatbot","Sentiment Analysis"])
 
 
         if tab == "Price Prediction":
@@ -605,7 +605,12 @@ def main():
 
         elif tab == "Chatbot":
             chatbot_ui()  # Show chatbot in the main content area
-            sentiment_func()
+
+        elif tab == "Sentiment Analysis":
+            stock_sentiment_analysis()
+
+            yt_video()
+
 
 
 if __name__ == "__main__":
