@@ -10,5 +10,6 @@ numpy
 transformers
 python-dotenv
 youtube-transcript-api
+wordcloud
 
 
