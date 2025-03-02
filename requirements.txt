@@ -6,7 +6,11 @@ requests
 beautifulsoup4
 pyttsx3
 matplotlib
-python-dotenv
+datetime
+numpy
+threading
+io
+tempfile
+os
+time
 collections
-
-
