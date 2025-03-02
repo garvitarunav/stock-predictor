@@ -12,5 +12,9 @@ python-dotenv
 youtube-transcript-api
 wordcloud
 nltk
+torch
+torchvision
+torchaudio
+
 
 
