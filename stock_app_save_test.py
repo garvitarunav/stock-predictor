@@ -137,10 +137,10 @@ def add_technical_indicators(df, target):
 
         # Interactive sliders for MA windows
         st.sidebar.header("📊 Technical Indicator Settings")
-        ma_5 = st.sidebar.slider("5-day MA", 3, 10, 5)
-        ma_10 = st.sidebar.slider("10-day MA", 5, 20, 10)
-        ma_20 = st.sidebar.slider("20-day MA", 10, 50, 20)
-        ma_50 = st.sidebar.slider("50-day MA", 20, 100, 50)
+        ma_5 = st.sidebar.slider("5-day MA",5)
+        ma_10 = st.sidebar.slider("10-day MA",10)
+        ma_20 = st.sidebar.slider("20-day MA",20)
+        ma_50 = st.sidebar.slider("50-day MA",50)
 
         # Checkboxes for enabling/disabling indicators
         show_ma = st.sidebar.checkbox("Show Moving Averages", True)
@@ -445,7 +445,7 @@ def main():
                 st.error("Wrong password. Please try again.")
     else:
         st.sidebar.title("Navigation")
-        tab = st.sidebar.selectbox("Go to", ["Price Prediction", "Stock Graphs", "Live News","Chatbot","Sentiment Analysis"])
+        tab = st.sidebar.selectbox("Go to", ["Price Prediction","Chatbot","Sentiment Analysis","Stock Graphs", "Live News"])
 
 
         if tab == "Price Prediction":
@@ -571,7 +571,13 @@ def main():
                                 """, unsafe_allow_html=True)
 
 
+        elif tab == "Chatbot":
+            chatbot_ui()  # Show chatbot in the main content area
 
+        elif tab == "Sentiment Analysis":
+            stock_sentiment_analysis()
+
+            yt_video()
                                     
 
 
@@ -806,13 +812,7 @@ def main():
                                     news_to_display = []
 
 
-        elif tab == "Chatbot":
-            chatbot_ui()  # Show chatbot in the main content area
-
-        elif tab == "Sentiment Analysis":
-            stock_sentiment_analysis()
-
-            yt_video()
+       
 
 
 
