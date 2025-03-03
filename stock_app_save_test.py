@@ -97,38 +97,241 @@ def show_calendar():
     st.write(f"Selected Date: {selected_date}")
 
 
-# Fetch historical data
 def fetch_historical_data(stock_symbol):
-    # Get user inputs from the sidebar
-    period = st.sidebar.radio("Select period (GIVES YOU THE PREDICTION BY TRAINING THE MODEL FOR THE CHOSEN TIME PERIOD)", ["1y","2y","3y","4y","5y","6y","7y"])
-    interval = st.sidebar.radio("Select interval", ["1d"])
+    try:
+        # Get user inputs from the sidebar
+        period = st.sidebar.radio("Select period (GIVES YOU THE PREDICTION BY TRAINING THE MODEL FOR THE CHOSEN TIME PERIOD)", 
+                                  ["1y", "2y", "3y", "4y", "5y", "6y", "7y"])
+        interval = st.sidebar.radio("Select interval", ["1d"])
 
-    # Display the selected period and interval for the user
-    st.sidebar.write(f"Selected period: {period}")
-    st.sidebar.write(f"Selected interval: {interval}")
+        # Display the selected period and interval
+        st.sidebar.write(f"Selected period: {period}")
+        st.sidebar.write(f"Selected interval: {interval}")
 
-    # Fetch stock data using yfinance
-    stock_data = yf.Ticker(stock_symbol)
-    df = stock_data.history(period=period, interval=interval)
-    
-    # Process and display the stock data
-    df.index = pd.to_datetime(df.index)
-    df.index = df.index.tz_localize(None)
-    return df 
-    # Display the data in the main area
-    st.write(f"Historical Data for {stock_symbol}:")
-    st.dataframe(df)
+        # Validate stock symbol
+        stock_data = yf.Ticker(stock_symbol)
+        df = stock_data.history(period=period, interval=interval)
 
-# Add technical indicators
-def add_technical_indicators(df):
-    df['5_day_MA'] = df['Close'].rolling(window=5).mean()
-    df['10_day_MA'] = df['Close'].rolling(window=10).mean()
-    df['20_day_MA'] = df['Close'].rolling(window=20).mean()
-    df['RSI'] = 100 - (100 / (1 + (df['Close'].diff().gt(0).rolling(window=14).sum() / 
-                                   df['Close'].diff().lt(0).rolling(window=14).sum())))
+        if df.empty:
+            st.error(f"No data available for {stock_symbol}. Please check the symbol or select a different time period.")
+            return None  # Return None if no data is available
 
-    df = df.dropna()
-    return df
+        # Process and clean the stock data
+        df.index = pd.to_datetime(df.index)
+        df.index = df.index.tz_localize(None)
+
+        # Display the data
+        st.write(f"Historical Data for {stock_symbol}:")
+        st.dataframe(df)
+
+        return df  
+
+    except Exception as e:
+        st.error(f"An error occurred while fetching data: {str(e)}")
+        return None  # Ensure the function exits cleanly if an error occurs
+
+
+def add_technical_indicators(df, target):
+    try:
+        df = df.copy()  # Avoid modifying original dataframe
+
+        # Interactive sliders for MA windows
+        st.sidebar.header("📊 Technical Indicator Settings")
+        ma_5 = st.sidebar.slider("5-day MA", 3, 10, 5)
+        ma_10 = st.sidebar.slider("10-day MA", 5, 20, 10)
+        ma_20 = st.sidebar.slider("20-day MA", 10, 50, 20)
+        ma_50 = st.sidebar.slider("50-day MA", 20, 100, 50)
+
+        # Checkboxes for enabling/disabling indicators
+        show_ma = st.sidebar.checkbox("Show Moving Averages", True)
+        show_macd = st.sidebar.checkbox("Show MACD", True)
+        show_rsi = st.sidebar.checkbox("Show RSI", True)
+        show_bb = st.sidebar.checkbox("Show Bollinger Bands", True)
+        show_obv = st.sidebar.checkbox("Show OBV", True)
+
+        # Moving Averages
+        df[f'{ma_5}_day_MA'] = df[target].rolling(window=ma_5).mean()
+        df[f'{ma_10}_day_MA'] = df[target].rolling(window=ma_10).mean()
+        df[f'{ma_20}_day_MA'] = df[target].rolling(window=ma_20).mean()
+        df[f'{ma_50}_day_MA'] = df[target].rolling(window=ma_50).mean()
+
+        # MACD
+        df['12_day_EMA'] = df[target].ewm(span=12, adjust=False).mean()
+        df['26_day_EMA'] = df[target].ewm(span=26, adjust=False).mean()
+        df['MACD'] = df['12_day_EMA'] - df['26_day_EMA']
+        df['MACD_Signal'] = df['MACD'].ewm(span=9, adjust=False).mean()
+
+        # RSI
+        delta = df[target].diff()
+        gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+        loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+        rs = gain / loss
+        df['RSI'] = 100 - (100 / (1 + rs))
+
+        # Bollinger Bands
+        df['BB_Middle'] = df[target].rolling(window=20).mean()
+        df['BB_Upper'] = df['BB_Middle'] + 2 * df[target].rolling(window=20).std()
+        df['BB_Lower'] = df['BB_Middle'] - 2 * df[target].rolling(window=20).std()
+
+        # OBV
+        df['OBV'] = (df['Volume'].where(df[target] > df[target].shift(1), -df['Volume'])).cumsum()
+
+        # Drop NaN values after calculations
+        df = df.dropna()
+
+        # --------- PLOTS & EVALUATIONS ---------
+        if show_ma:
+            st.subheader("📈 Moving Averages")
+            fig, ax = plt.subplots(figsize=(12, 5))
+            ax.plot(df[target], label='Stock Price', color='black', alpha=0.5)
+            ax.plot(df[f'{ma_10}_day_MA'], label=f'{ma_10}-day MA', linestyle='dashed')
+            ax.plot(df[f'{ma_50}_day_MA'], label=f'{ma_50}-day MA', linestyle='dashed')
+            ax.legend()
+            ax.grid(True)
+            st.pyplot(fig)
+            st.info("🔹 If the shorter MA crosses above the longer MA, it may indicate a **bullish trend**. If it crosses below, it may indicate a **bearish trend**.")
+
+        if show_macd:
+            st.subheader("📉 MACD & Signal Line")
+            fig, ax = plt.subplots(figsize=(12, 5))
+            ax.plot(df['MACD'], label='MACD', color='blue')
+            ax.plot(df['MACD_Signal'], label='Signal Line', color='red', linestyle='dashed')
+            ax.axhline(0, color='black', linewidth=0.7, linestyle='dotted')
+            ax.legend()
+            ax.grid(True)
+            st.pyplot(fig)
+
+            last_macd = df['MACD'].iloc[-1]
+            last_signal = df['MACD_Signal'].iloc[-1]
+
+            if last_macd > last_signal:
+                st.success("✅ MACD above Signal Line → **Potential Uptrend** (Buy Signal)")
+            else:
+                st.warning("⚠️ MACD below Signal Line → **Potential Downtrend** (Sell Signal)")
+
+        if show_rsi:
+            st.subheader("📊 Relative Strength Index (RSI)")
+            fig, ax = plt.subplots(figsize=(12, 3))
+            ax.plot(df['RSI'], label='RSI', color='purple')
+            ax.axhline(70, color='red', linestyle='dashed', label="Overbought (70)")
+            ax.axhline(30, color='green', linestyle='dashed', label="Oversold (30)")
+            ax.legend()
+            ax.grid(True)
+            st.pyplot(fig)
+
+            last_rsi = df['RSI'].iloc[-1]
+
+            if last_rsi > 70:
+                st.warning("⚠️ RSI above 70 → **Stock is Overbought**. Potential price correction or downtrend ahead.")
+            elif last_rsi < 30:
+                st.success("✅ RSI below 30 → **Stock is Oversold**. Potential buying opportunity.")
+            else:
+                st.info("ℹ️ RSI is in a neutral range (30-70) → **No strong buy/sell signals. The stock is stable.**")
+
+        if show_bb:
+            st.subheader("📊 Bollinger Bands")
+            fig, ax = plt.subplots(figsize=(12, 5))
+            ax.plot(df[target], label='Stock Price', color='black', alpha=0.5)
+            ax.plot(df['BB_Middle'], label='Middle Band', linestyle='dotted')
+            ax.plot(df['BB_Upper'], label='Upper Band', linestyle='dashed', color='red')
+            ax.plot(df['BB_Lower'], label='Lower Band', linestyle='dashed', color='green')
+            ax.legend()
+            ax.grid(True)
+            st.pyplot(fig)
+
+            last_price = df[target].iloc[-1]
+            last_bb_upper = df['BB_Upper'].iloc[-1]
+            last_bb_lower = df['BB_Lower'].iloc[-1]
+
+            if last_price >= last_bb_upper:
+                st.warning("⚠️ Price near Upper Bollinger Band → **Stock may be overbought. Possible reversal.**")
+            elif last_price <= last_bb_lower:
+                st.success("✅ Price near Lower Bollinger Band → **Stock may be undervalued. Possible uptrend.**")
+            else:
+                st.info("ℹ️ Price is within Bollinger Bands → **Stock is in a normal range. No strong trend signals.**")
+
+        if show_obv:
+            st.subheader("📊 On-Balance Volume (OBV)")
+            fig, ax = plt.subplots(figsize=(12, 3))
+            ax.plot(df['OBV'], label='OBV', color='brown')
+            ax.legend()
+            ax.grid(True)
+            st.pyplot(fig)
+            st.info("🔹 Rising OBV confirms an uptrend, while a falling OBV signals a downtrend.")
+
+        # Initialize score
+        score = 0
+
+        # Moving Averages (Golden Cross & Death Cross)
+        if df[f'{ma_10}_day_MA'].iloc[-1] > df[f'{ma_50}_day_MA'].iloc[-1]:
+            score += 3  # Bullish trend
+        elif df[f'{ma_10}_day_MA'].iloc[-1] < df[f'{ma_50}_day_MA'].iloc[-1]:
+            score -= 3  # Bearish trend
+
+        # MACD
+        if df['MACD'].iloc[-1] > df['MACD_Signal'].iloc[-1]:
+            score += 3  # Uptrend
+        else:
+            score -= 3  # Downtrend
+
+        # RSI
+        if df['RSI'].iloc[-1] < 30:
+            score += 2  # Oversold (Buy)
+        elif df['RSI'].iloc[-1] > 70:
+            score -= 2  # Overbought (Sell)
+
+        # Bollinger Bands
+        if df[target].iloc[-1] >= df['BB_Upper'].iloc[-1]:
+            score -= 2  # Overbought
+        elif df[target].iloc[-1] <= df['BB_Lower'].iloc[-1]:
+            score += 2  # Undervalued
+
+        # OBV
+        if df['OBV'].iloc[-1] > df['OBV'].iloc[-2]:  
+            score += 1  # Rising OBV (Uptrend)
+        elif df['OBV'].iloc[-1] < df['OBV'].iloc[-2]:  
+            score -= 1  # Falling OBV (Downtrend)
+
+        # Final Decision Based on Score
+        if score >= 4:
+            decision = "✅ **Buy** - Strong bullish signals detected!"
+            color = "green"
+        elif score <= -4:
+            decision = "❌ **Sell** - Strong bearish signals detected!"
+            color = "red"
+        else:
+            decision = "⏸️ **Hold** - No strong trend detected, wait for a clearer signal."
+            color = "gray"
+
+        # Display in Streamlit
+        st.subheader("📢 Final Decision: Stock Action Recommendation")
+        st.markdown(f"""
+            <div style="
+                padding: 15px; 
+                border-radius: 10px; 
+                background-color: {color}; 
+                color: white; 
+                font-size: 20px; 
+                font-weight: bold;
+                text-align: center;
+                box-shadow: 2px 2px 10px rgba(0,0,0,0.2);
+            ">
+                {decision}
+            </div>
+        """, unsafe_allow_html=True)
+
+
+
+        return df
+
+
+    except Exception as e:
+        st.error(f"An error occurred while calculating technical indicators: {str(e)}")
+        return df
+
+
+
+
 
 # Prepare data
 def prepare_data(df, target_feature):
@@ -289,7 +492,7 @@ def main():
                     
                     if choice == "Fetch live data":
                         df = fetch_historical_data(selected_stock)
-                        df = add_technical_indicators(df)
+                        df = add_technical_indicators(df,target_feature)
                         live_data = df.tail(1)
                         st.write("Live Data Fetched:")
                         st.dataframe(live_data)
@@ -350,7 +553,7 @@ def main():
 
                             with st.spinner("Training the model..."):
                                 df = fetch_historical_data(selected_stock)
-                                df = add_technical_indicators(df)
+                                df = add_technical_indicators(df,target_feature)
                                 features, target = prepare_data(df, target_feature)
                                 X_train, X_test, y_train, y_test = train_test_split(features, target, test_size=0.2, random_state=42)
                                 pipeline = tune_hyperparameters(X_train, y_train)
