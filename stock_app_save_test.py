@@ -21,7 +21,6 @@ import datetime
 import matplotlib.pyplot as plt
 import time
 from collections import Counter
-from statsmodels.tsa.statespace.sarimax import SARIMAX
 from statsmodels.tsa.stattools import adfuller, acf, pacf
 import warnings
 import numpy as np
