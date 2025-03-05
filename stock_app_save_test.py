@@ -1,7 +1,8 @@
 import yfinance as yf
 import pandas as pd
 from sklearn.model_selection import train_test_split, GridSearchCV
-from sklearn.ensemble import RandomForestRegressor
+from sklearn.ensemble import ExtraTreesRegressor, RandomForestRegressor
+from xgboost import XGBRegressor
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
@@ -20,6 +21,10 @@ import datetime
 import matplotlib.pyplot as plt
 import time
 from collections import Counter
+from statsmodels.tsa.statespace.sarimax import SARIMAX
+from statsmodels.tsa.stattools import adfuller, acf, pacf
+import warnings
+import numpy as np
 from chatbot import *  # Import the saved functions
 from sentiment import *    
 from yt_sentiment import *
@@ -260,48 +265,74 @@ def add_technical_indicators(df, target):
             st.info("🔹 Rising OBV confirms an uptrend, while a falling OBV signals a downtrend.")
 
         # Initialize score
-        score = 0
+        score = 0  
 
-        # Moving Averages (Golden Cross & Death Cross)
-        if df[f'{ma_10}_day_MA'].iloc[-1] > df[f'{ma_50}_day_MA'].iloc[-1]:
-            score += 3  # Bullish trend
-        elif df[f'{ma_10}_day_MA'].iloc[-1] < df[f'{ma_50}_day_MA'].iloc[-1]:
-            score -= 3  # Bearish trend
+        # Moving Averages (Golden Cross & Death Cross)  
+        ma_diff = df[f'{ma_10}_day_MA'].iloc[-1] - df[f'{ma_50}_day_MA'].iloc[-1]
+        if ma_diff > 0:
+            score += min(5, ma_diff * 0.5)  # More weight if the gap is large
+        else:
+            score -= min(5, abs(ma_diff) * 0.5)
 
         # MACD
-        if df['MACD'].iloc[-1] > df['MACD_Signal'].iloc[-1]:
-            score += 3  # Uptrend
+        macd_diff = df['MACD'].iloc[-1] - df['MACD_Signal'].iloc[-1]
+        if macd_diff > 0:
+            score += min(4, macd_diff * 2)  # Stronger trend = Higher weight
         else:
-            score -= 3  # Downtrend
+            score -= min(4, abs(macd_diff) * 2)
 
-        # RSI
-        if df['RSI'].iloc[-1] < 30:
-            score += 2  # Oversold (Buy)
-        elif df['RSI'].iloc[-1] > 70:
-            score -= 2  # Overbought (Sell)
+        # RSI (Dynamic Scaling)
+        rsi_value = df['RSI'].iloc[-1]
+        if rsi_value < 20:
+            score += 4  # Strong buy signal
+        elif rsi_value < 30:
+            score += 2  
+        elif rsi_value > 80:
+            score -= 4  # Strong sell signal
+        elif rsi_value > 70:
+            score -= 2  
 
         # Bollinger Bands
-        if df[target].iloc[-1] >= df['BB_Upper'].iloc[-1]:
-            score -= 2  # Overbought
-        elif df[target].iloc[-1] <= df['BB_Lower'].iloc[-1]:
-            score += 2  # Undervalued
+        price = df[target].iloc[-1]
+        if price >= df['BB_Upper'].iloc[-1]:
+            score -= 3  # Higher weight for strong overbought conditions
+        elif price <= df['BB_Lower'].iloc[-1]:
+            score += 3  # Higher weight for strong undervalued conditions
 
-        # OBV
-        if df['OBV'].iloc[-1] > df['OBV'].iloc[-2]:  
-            score += 1  # Rising OBV (Uptrend)
-        elif df['OBV'].iloc[-1] < df['OBV'].iloc[-2]:  
-            score -= 1  # Falling OBV (Downtrend)
+        # OBV (Strength of Volume Movement)
+        obv_change = df['OBV'].iloc[-1] - df['OBV'].iloc[-2]
+        if obv_change > 0:
+            score += min(3, obv_change / 10000)  # Scale OBV weight dynamically
+        elif obv_change < 0:
+            score -= min(3, abs(obv_change) / 10000)
 
-        # Final Decision Based on Score
-        if score >= 4:
-            decision = "✅ **Buy** - Strong bullish signals detected!"
+        # 🔥 **New Feature: Trend Confirmation**
+        trend_score = 0  
+        if ma_diff > 0 and macd_diff > 0:  
+            trend_score += 2  # Confirmed bullish trend
+        elif ma_diff < 0 and macd_diff < 0:  
+            trend_score -= 2  # Confirmed bearish trend
+
+        score += trend_score  
+
+        # 🏆 **Final Decision Based on Score**
+        if score >= 6:
+            decision = "✅ **Strong Buy** - High confidence bullish signal!"
             color = "green"
-        elif score <= -4:
-            decision = "❌ **Sell** - Strong bearish signals detected!"
-            color = "red"
-        else:
-            decision = "⏸️ **Hold** - No strong trend detected, wait for a clearer signal."
+        elif 3 <= score < 6:
+            decision = "📈 **Buy** - Positive trend detected."
+            color = "lightgreen"
+        elif -3 <= score < 3:
+            decision = "⏸️ **Hold** - No strong trend detected."
             color = "gray"
+        elif -6 < score <= -3:
+            decision = "📉 **Sell** - Negative trend detected."
+            color = "orange"
+        else:
+            decision = "❌ **Strong Sell** - High confidence bearish signal!"
+            color = "red"
+
+    
 
         # Display in Streamlit
         st.subheader("📢 Final Decision: Stock Action Recommendation")
@@ -343,7 +374,7 @@ def prepare_data(df, target_feature):
 # Create pipeline
 def create_pipeline():
     preprocessor = ColumnTransformer(
-        transformers=[('num', MinMaxScaler(), ['Open', 'High', 'Low', 'Close', '5_day_MA', '10_day_MA', '20_day_MA', 'RSI'])])
+        transformers=[('num', MinMaxScaler(), ['Open', 'High', 'Low', 'Close', '5_day_MA', '10_day_MA', '20_day_MA'])])
     pipeline = Pipeline(steps=[('preprocessor', preprocessor),
                                 ('imputer', SimpleImputer(strategy='mean')),
                                 ('model', RandomForestRegressor(random_state=42))])
@@ -397,6 +428,119 @@ def fetch_stock_info(stock_name):
     
     # Return stock info with a maximum of 100 words
     return stock_info if stock_info else "No information available."
+
+
+
+warnings.filterwarnings("ignore")
+
+def prepare_forecasting_data(df, target_feature):
+    """
+    Prepares features for time-series forecasting by adding technical indicators and lag features.
+    """
+    df = df.copy()
+    
+    # Moving Averages
+    df['5_day_MA'] = df[target_feature].rolling(window=5).mean()
+    df['10_day_MA'] = df[target_feature].rolling(window=10).mean()
+    df['20_day_MA'] = df[target_feature].rolling(window=20).mean()
+
+    # RSI Calculation
+    delta = df[target_feature].diff()
+    gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+    loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+    df['RSI'] = 100 - (100 / (1 + (gain / loss)))
+
+    # Lag Features
+    for lag in range(1, 6):  
+        df[f'lag_{lag}'] = df[target_feature].shift(lag)
+
+    # Drop missing values (due to rolling calculations)
+    df.dropna(inplace=True)
+
+    # Scaling features
+    scaler = MinMaxScaler()
+    scaled_features = scaler.fit_transform(df.drop(columns=[target_feature]))
+    return pd.DataFrame(scaled_features, columns=df.columns.drop(target_feature)), df[target_feature], scaler
+
+def train_hybrid_model(X_train, y_train):
+    """
+    Trains a hybrid model using Extra Trees Regressor and XGBoost.
+    """
+    etr = ExtraTreesRegressor(n_estimators=100, random_state=42)
+    xgb = XGBRegressor(n_estimators=100, learning_rate=0.05, objective="reg:squarederror", random_state=42)
+
+    etr.fit(X_train, y_train)
+    xgb.fit(X_train, y_train)
+
+    return etr, xgb
+
+def hybrid_forecast(etr, xgb, last_known_features, scaler, steps=20):
+    """
+    Performs rolling forecasting for the next 'steps' days using trained ETR and XGBoost models.
+    """
+    future_predictions = []
+    
+    for _ in range(steps):
+        # Predict using both models
+        etr_pred = etr.predict(last_known_features.reshape(1, -1))[0]
+        xgb_pred = xgb.predict(last_known_features.reshape(1, -1))[0]
+        
+        # Weighted average for final prediction
+        final_pred = (0.6 * etr_pred) + (0.4 * xgb_pred)
+        future_predictions.append(final_pred)
+
+        # Update last known features for next prediction (mimic real-time update)
+        last_known_features = np.roll(last_known_features, -1)
+        last_known_features[-1] = final_pred  
+
+    return future_predictions
+
+def forecast_next_20_days(df, target_feature):
+    try:
+        if df is None or df.empty:
+            st.error("No stock data available for forecasting.")
+            return None
+
+        df = df.copy()
+        df.index = pd.to_datetime(df.index)
+
+        # Prepare data
+        X, y, scaler = prepare_forecasting_data(df, target_feature)
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+        # Train models
+        etr, xgb = train_hybrid_model(X_train, y_train)
+
+        # Get last known feature values for forecasting
+        last_known_features = X.iloc[-1].values
+
+        # Forecast next 20 days
+        forecast_values = hybrid_forecast(etr, xgb, last_known_features, scaler, steps=20)
+
+        # Generate forecast dates
+        forecast_dates = pd.date_range(start=df.index[-1], periods=21, freq='B')[1:]
+        forecast_df = pd.DataFrame({target_feature: forecast_values}, index=forecast_dates)
+
+        # Plot forecast
+        fig, ax = plt.subplots(figsize=(10, 5))
+        ax.plot(forecast_df.index, forecast_df[target_feature], marker='o', linestyle='dashed', color='red', label="Forecasted Price (Next 20 Days)")
+        ax.set_title(f"Stock Price Forecast for Next 20 Days")
+        ax.set_xlabel("Date")
+        ax.set_ylabel("Stock Price")
+        ax.legend()
+        ax.grid(True)
+
+        st.pyplot(fig)
+
+        return forecast_df
+
+    except Exception as e:
+        st.error(f"An error occurred during forecasting: {str(e)}")
+        return None
+
+
+
+
 
 
 def chatbot_ui():
@@ -524,6 +668,14 @@ def main():
                                     </p>
                                 </div>
                                 """, unsafe_allow_html=True)
+
+                        if st.button("Forecast Next 20 Days"):
+                            forecast_df = forecast_next_20_days(df, target_feature)
+                            if forecast_df is not None:
+                                st.line_chart(forecast_df)
+
+
+
 
 
                     elif choice == "Manually input custom data":
