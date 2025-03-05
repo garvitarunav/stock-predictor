@@ -10,3 +10,4 @@ yfinance
 pandas
 scikit-learn
 xgboost
+statsmodels
