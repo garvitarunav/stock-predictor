@@ -1,42 +1,12 @@
-# Streamlit for UI
-streamlit
-
-# Web scraping
-requests
-beautifulsoup4
-yfinance
-
-# Time and OS handling
-time
-os
-dotenv
-
-# Transformers (Hugging Face) for NLP tasks
-torch
-torchvision
-torchaudio
-tabulate
-
-
-# NLP & Sentiment Analysis
-nltk
+pyttsx3
+matplotlib
+numpy
+transformers
+python-dotenv
 youtube-transcript-api
 wordcloud
-urllib3
-
-# Data Processing & Machine Learning
-numpy
+nltk
+yfinance
 pandas
-sklearn
+scikit-learn
 xgboost
-statsmodels
-numpy
-
-# Visualization
-matplotlib
-
-# Miscellaneous
-collections
-pyttsx3
-python-dotenv
-re
