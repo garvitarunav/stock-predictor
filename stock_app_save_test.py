@@ -186,7 +186,8 @@ def add_technical_indicators(df, target):
 
         # --------- PLOTS & EVALUATIONS ---------
         if show_ma:
-            st.subheader("📈 Moving Averages")
+            st.subheader("📈 Moving Averages", help="Moving Averages (MA) smooth out price data to identify trends. A shorter MA (e.g., 10-day) reacts faster to changes, while a longer MA (e.g., 50-day) provides a broader trend perspective.")
+
             fig, ax = plt.subplots(figsize=(12, 5))
             ax.plot(df[target], label='Stock Price', color='black', alpha=0.5)
             ax.plot(df[f'{ma_10}_day_MA'], label=f'{ma_10}-day MA', linestyle='dashed')
@@ -194,10 +195,13 @@ def add_technical_indicators(df, target):
             ax.legend()
             ax.grid(True)
             st.pyplot(fig)
+
             st.info("🔹 If the shorter MA crosses above the longer MA, it may indicate a **bullish trend**. If it crosses below, it may indicate a **bearish trend**.")
 
+
         if show_macd:
-            st.subheader("📉 MACD & Signal Line")
+            st.subheader("📊 MACD Indicator", help="MACD shows momentum by comparing short and long EMAs. If MACD > Signal, it’s bullish; if MACD < Signal, it’s bearish. Crossovers help in buy/sell decisions.")
+
             fig, ax = plt.subplots(figsize=(12, 5))
             ax.plot(df['MACD'], label='MACD', color='blue')
             ax.plot(df['MACD_Signal'], label='Signal Line', color='red', linestyle='dashed')
@@ -215,7 +219,7 @@ def add_technical_indicators(df, target):
                 st.warning("⚠️ MACD below Signal Line → **Potential Downtrend** (Sell Signal)")
 
         if show_rsi:
-            st.subheader("📊 Relative Strength Index (RSI)")
+            st.subheader("📊 Relative Strength Index (RSI)",help="RSI measures momentum from 0-100. RSI < 30 is oversold (bullish), RSI > 70 is overbought (bearish). Helps identify trend reversals.")
             fig, ax = plt.subplots(figsize=(12, 3))
             ax.plot(df['RSI'], label='RSI', color='purple')
             ax.axhline(70, color='red', linestyle='dashed', label="Overbought (70)")
@@ -234,7 +238,8 @@ def add_technical_indicators(df, target):
                 st.info("ℹ️ RSI is in a neutral range (30-70) → **No strong buy/sell signals. The stock is stable.**")
 
         if show_bb:
-            st.subheader("📊 Bollinger Bands")
+            st.subheader("📊 Bollinger Bands", help="Bands show volatility; price near upper band = overbought (bearish), near lower band = oversold (bullish). Helps spot trend reversals.")
+
             fig, ax = plt.subplots(figsize=(12, 5))
             ax.plot(df[target], label='Stock Price', color='black', alpha=0.5)
             ax.plot(df['BB_Middle'], label='Middle Band', linestyle='dotted')
@@ -256,7 +261,8 @@ def add_technical_indicators(df, target):
                 st.info("ℹ️ Price is within Bollinger Bands → **Stock is in a normal range. No strong trend signals.**")
 
         if show_obv:
-            st.subheader("📊 On-Balance Volume (OBV)")
+            st.subheader("📈 On-Balance Volume (OBV)", help="Measures buying/selling pressure using volume. Rising OBV = strong demand (bullish), falling OBV = selling pressure (bearish).")
+
             fig, ax = plt.subplots(figsize=(12, 3))
             ax.plot(df['OBV'], label='OBV', color='brown')
             ax.legend()
