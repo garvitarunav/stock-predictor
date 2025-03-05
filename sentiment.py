@@ -16,24 +16,32 @@ def stock_sentiment_analysis():
         st.error(f"⚠️ Error loading sentiment analysis model: {e}")
         return
 
-    def fetch_news_gnews(stock_name, max_articles=50):
-        """Fetch news articles from GNews API."""
-        url = "https://gnews.io/api/v4/search"
-        params = {
-            "q": stock_name,
-            "lang": "en",
-            "country": "in",
-            "max": max_articles,
-            "apikey": "08eb58904eb6b537bc9e4c9c6d5ddd42"
-        }
-
+    def fetch_news_google(stock_name):
+        """Fetch stock news articles from Google News with error handling."""
+        google_url = f"https://news.google.com/search?q={stock_name}+stock&hl=en-IN&gl=IN&ceid=IN:en"
         try:
-            response = requests.get(url, params=params, timeout=10)
+            response = requests.get(google_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
             response.raise_for_status()
-            return response.json().get("articles", [])
+            soup = BeautifulSoup(response.text, "html.parser")
+            
+            news_list = []
+            for item in soup.find_all("h3"):
+                if item.a:  # Ensure <a> tag exists
+                    title = item.text.strip()
+                    link = "https://news.google.com" + item.a["href"][1:]
+                    news_list.append({"title": title, "url": link})
+            
+            return news_list[:20]  # Limit results to top 20 articles
+
+        except requests.exceptions.ConnectionError:
+            st.error("⚠️ Network error. Please check your internet connection.")
+        except requests.exceptions.Timeout:
+            st.warning("⚠️ Request to Google News timed out. Try again later.")
         except requests.exceptions.RequestException as e:
-            st.error(f"⚠️ API request failed: {e}")
-            return []
+            st.error(f"⚠️ Failed to fetch Google News: {e}")
+
+        return []
+
 
     def fetch_news_google(stock_name):
         """Fetch stock news articles from Google News."""
