@@ -11,3 +11,7 @@ pandas
 scikit-learn
 xgboost
 statsmodels
+torch 
+torchvision 
+torchaudio
+
