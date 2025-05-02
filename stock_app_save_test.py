@@ -102,22 +102,15 @@ def show_calendar():
     st.write(f"Selected Date: {selected_date}")
 
 
-import time
-
 def fetch_historical_data(stock_symbol):
     try:
-        # Get user inputs from the sidebar
+        # Get user inputs from the sidebar (moved outside function)
         period = st.sidebar.radio("Select period (GIVES YOU THE PREDICTION BY TRAINING THE MODEL FOR THE CHOSEN TIME PERIOD)", 
                                   ["1y", "2y", "3y", "4y", "5y", "6y", "7y"])
         interval = st.sidebar.radio("Select interval", ["1d"])
 
-        # Display the selected period and interval
-        st.sidebar.write(f"Selected period: {period}")
-        st.sidebar.write(f"Selected interval: {interval}")
-
-        # Retry mechanism for rate limiting and NoneType issues
         max_retries = 5
-        retry_delay = 10  # seconds
+        retry_delay = 5  # seconds
         df = None
 
         for attempt in range(max_retries):
@@ -127,14 +120,14 @@ def fetch_historical_data(stock_symbol):
                 if df is not None and not df.empty:
                     break
                 else:
-                    st.warning(f"Attempt {attempt + 1}: No data returned. Waiting {retry_delay}s before retrying...")
+                    st.warning(f"Attempt {attempt+1}: Empty response. Retrying in {retry_delay}s...")
                     time.sleep(retry_delay)
             except Exception as e:
-                st.warning(f"Attempt {attempt + 1}: Error: {e}. Retrying in {retry_delay}s...")
+                st.warning(f"Attempt {attempt+1}: {e}. Retrying in {retry_delay}s...")
                 time.sleep(retry_delay)
 
         if df is None or df.empty:
-            st.error(f"Data not available for {stock_symbol} after {max_retries} attempts. Please try again later.")
+            st.error(f"Failed to fetch data for {stock_symbol} after {max_retries} attempts.")
             return None
 
         # Process and clean the stock data
@@ -142,10 +135,10 @@ def fetch_historical_data(stock_symbol):
         df.index = df.index.tz_localize(None)
 
         # Display the data
-        st.write(f"Historical Data for {stock_symbol}:")
+        st.write(f"Historical Data for {stock_symbol} ({period}, {interval}):")
         st.dataframe(df)
 
-        return df  
+        return df
 
     except Exception as e:
         st.error(f"An unexpected error occurred: {str(e)}")
