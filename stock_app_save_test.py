@@ -102,24 +102,40 @@ def show_calendar():
     st.write(f"Selected Date: {selected_date}")
 
 
+import streamlit as st
+import yfinance as yf
+import pandas as pd
+import time
+
+@st.cache_data(show_spinner=False)
 def fetch_historical_data(stock_symbol):
     try:
         # Get user inputs from the sidebar
-        period = st.sidebar.radio("Select period (GIVES YOU THE PREDICTION BY TRAINING THE MODEL FOR THE CHOSEN TIME PERIOD)", 
-                                  ["1y", "2y", "3y", "4y", "5y", "6y", "7y"])
+        period = st.sidebar.radio(
+            "Select period (GIVES YOU THE PREDICTION BY TRAINING THE MODEL FOR THE CHOSEN TIME PERIOD)", 
+            ["1y", "2y", "3y", "4y", "5y", "6y", "7y"]
+        )
         interval = st.sidebar.radio("Select interval", ["1d"])
 
         # Display the selected period and interval
         st.sidebar.write(f"Selected period: {period}")
         st.sidebar.write(f"Selected interval: {interval}")
 
-        # Validate stock symbol
+        # Validate and fetch stock data with retries
         stock_data = yf.Ticker(stock_symbol)
-        df = stock_data.history(period=period, interval=interval)
+        max_retries = 3
+        retry_delay = 5  # seconds
 
-        if df.empty:
-            st.error(f"No data available for {stock_symbol}. Please check the symbol or select a different time period.")
-            return None  # Return None if no data is available
+        for attempt in range(max_retries):
+            df = stock_data.history(period=period, interval=interval)
+            if not df.empty:
+                break
+            else:
+                st.warning(f"Attempt {attempt+1}: Rate limit hit or empty data. Retrying in {retry_delay} seconds...")
+                time.sleep(retry_delay)
+        else:
+            st.error(f"Failed to fetch data for {stock_symbol} after {max_retries} attempts.")
+            return None
 
         # Process and clean the stock data
         df.index = pd.to_datetime(df.index)
@@ -129,11 +145,12 @@ def fetch_historical_data(stock_symbol):
         st.write(f"Historical Data for {stock_symbol}:")
         st.dataframe(df)
 
-        return df  
+        return df
 
     except Exception as e:
         st.error(f"An error occurred while fetching data: {str(e)}")
-        return None  # Ensure the function exits cleanly if an error occurs
+        return None
+
 
 
 def add_technical_indicators(df, target):
