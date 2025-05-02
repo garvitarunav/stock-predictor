@@ -102,25 +102,9 @@ def show_calendar():
     st.write(f"Selected Date: {selected_date}")
 
 
-import streamlit as st
-import yfinance as yf
-import pandas as pd
-import time
-
 @st.cache_data(show_spinner=False)
-def fetch_historical_data(stock_symbol):
+def fetch_historical_data(stock_symbol, period, interval):
     try:
-        # Get user inputs from the sidebar
-        period = st.sidebar.radio(
-            "Select period (GIVES YOU THE PREDICTION BY TRAINING THE MODEL FOR THE CHOSEN TIME PERIOD)", 
-            ["1y", "2y", "3y", "4y", "5y", "6y", "7y"]
-        )
-        interval = st.sidebar.radio("Select interval", ["1d"])
-
-        # Display the selected period and interval
-        st.sidebar.write(f"Selected period: {period}")
-        st.sidebar.write(f"Selected interval: {interval}")
-
         # Validate and fetch stock data with retries
         stock_data = yf.Ticker(stock_symbol)
         max_retries = 3
@@ -131,7 +115,6 @@ def fetch_historical_data(stock_symbol):
             if not df.empty:
                 break
             else:
-                st.warning(f"Attempt {attempt+1}: Rate limit hit or empty data. Retrying in {retry_delay} seconds...")
                 time.sleep(retry_delay)
         else:
             st.error(f"Failed to fetch data for {stock_symbol} after {max_retries} attempts.")
