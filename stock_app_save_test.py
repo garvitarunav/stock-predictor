@@ -104,19 +104,30 @@ def show_calendar():
 
 def fetch_historical_data(stock_symbol):
     try:
-        # Get user inputs from the sidebar (moved outside function)
+        # Get user inputs from the sidebar
         period = st.sidebar.radio("Select period (GIVES YOU THE PREDICTION BY TRAINING THE MODEL FOR THE CHOSEN TIME PERIOD)", 
                                   ["1y", "2y", "3y", "4y", "5y", "6y", "7y"])
         interval = st.sidebar.radio("Select interval", ["1d"])
 
+        # Display the selected period and interval
+        st.sidebar.write(f"Selected period: {period}")
+        st.sidebar.write(f"Selected interval: {interval}")
+
         max_retries = 5
-        retry_delay = 5  # seconds
+        retry_delay = 10  # Increase delay to 10 seconds between retries
         df = None
 
         for attempt in range(max_retries):
             try:
                 stock_data = yf.Ticker(stock_symbol)
+
+                # If period is too long, limit it to avoid rate limiting
+                if period in ["6y", "7y"]:
+                    period = "5y"  # Limit to 5 years to prevent hitting limits
+
+                # Fetch historical data
                 df = stock_data.history(period=period, interval=interval)
+                
                 if df is not None and not df.empty:
                     break
                 else:
@@ -134,7 +145,6 @@ def fetch_historical_data(stock_symbol):
         df.index = pd.to_datetime(df.index)
         df.index = df.index.tz_localize(None)
 
-        # Display the data
         st.write(f"Historical Data for {stock_symbol} ({period}, {interval}):")
         st.dataframe(df)
 
@@ -143,7 +153,6 @@ def fetch_historical_data(stock_symbol):
     except Exception as e:
         st.error(f"An unexpected error occurred: {str(e)}")
         return None
-
 
 
 def add_technical_indicators(df, target):
