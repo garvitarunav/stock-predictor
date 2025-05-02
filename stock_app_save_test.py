@@ -102,20 +102,31 @@ def show_calendar():
     st.write(f"Selected Date: {selected_date}")
 
 
-@st.cache_data(show_spinner=False)
-def fetch_historical_data(stock_symbol, period, interval):
+def fetch_historical_data(stock_symbol):
     try:
-        # Validate and fetch stock data with retries
-        stock_data = yf.Ticker(stock_symbol)
+        # Get user inputs from the sidebar
+        period = st.sidebar.radio("Select period (GIVES YOU THE PREDICTION BY TRAINING THE MODEL FOR THE CHOSEN TIME PERIOD)", 
+                                  ["1y", "2y", "3y", "4y", "5y", "6y", "7y"])
+        interval = st.sidebar.radio("Select interval", ["1d"])
+
+        # Display the selected period and interval
+        st.sidebar.write(f"Selected period: {period}")
+        st.sidebar.write(f"Selected interval: {interval}")
+
+        # Retry mechanism for rate limiting
         max_retries = 3
         retry_delay = 5  # seconds
-
         for attempt in range(max_retries):
-            df = stock_data.history(period=period, interval=interval)
-            if not df.empty:
-                break
-            else:
-                time.sleep(retry_delay)
+            try:
+                stock_data = yf.Ticker(stock_symbol)
+                df = stock_data.history(period=period, interval=interval)
+                if not df.empty:
+                    break
+                else:
+                    st.warning(f"Attempt {attempt + 1}: Received empty data. Retrying...")
+            except Exception as fetch_err:
+                st.warning(f"Attempt {attempt + 1}: Error fetching data: {fetch_err}. Retrying...")
+            time.sleep(retry_delay)
         else:
             st.error(f"Failed to fetch data for {stock_symbol} after {max_retries} attempts.")
             return None
@@ -128,7 +139,7 @@ def fetch_historical_data(stock_symbol, period, interval):
         st.write(f"Historical Data for {stock_symbol}:")
         st.dataframe(df)
 
-        return df
+        return df  
 
     except Exception as e:
         st.error(f"An error occurred while fetching data: {str(e)}")
