@@ -102,6 +102,8 @@ def show_calendar():
     st.write(f"Selected Date: {selected_date}")
 
 
+import time
+
 def fetch_historical_data(stock_symbol):
     try:
         # Get user inputs from the sidebar
@@ -113,22 +115,26 @@ def fetch_historical_data(stock_symbol):
         st.sidebar.write(f"Selected period: {period}")
         st.sidebar.write(f"Selected interval: {interval}")
 
-        # Retry mechanism for rate limiting
-        max_retries = 3
-        retry_delay = 5  # seconds
+        # Retry mechanism for rate limiting and NoneType issues
+        max_retries = 5
+        retry_delay = 10  # seconds
+        df = None
+
         for attempt in range(max_retries):
             try:
                 stock_data = yf.Ticker(stock_symbol)
                 df = stock_data.history(period=period, interval=interval)
-                if not df.empty:
+                if df is not None and not df.empty:
                     break
                 else:
-                    st.warning(f"Attempt {attempt + 1}: Received empty data. Retrying...")
-            except Exception as fetch_err:
-                st.warning(f"Attempt {attempt + 1}: Error fetching data: {fetch_err}. Retrying...")
-            time.sleep(retry_delay)
-        else:
-            st.error(f"Failed to fetch data for {stock_symbol} after {max_retries} attempts.")
+                    st.warning(f"Attempt {attempt + 1}: No data returned. Waiting {retry_delay}s before retrying...")
+                    time.sleep(retry_delay)
+            except Exception as e:
+                st.warning(f"Attempt {attempt + 1}: Error: {e}. Retrying in {retry_delay}s...")
+                time.sleep(retry_delay)
+
+        if df is None or df.empty:
+            st.error(f"Data not available for {stock_symbol} after {max_retries} attempts. Please try again later.")
             return None
 
         # Process and clean the stock data
@@ -142,7 +148,7 @@ def fetch_historical_data(stock_symbol):
         return df  
 
     except Exception as e:
-        st.error(f"An error occurred while fetching data: {str(e)}")
+        st.error(f"An unexpected error occurred: {str(e)}")
         return None
 
 
